@@ -16,6 +16,8 @@ import {
   AlertCircle,
   BarChart3,
   HelpCircle,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function TeacherDashboardPage() {
@@ -32,6 +34,11 @@ export default function TeacherDashboardPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newClass, setNewClass] = useState("X-5");
   const [creating, setCreating] = useState(false);
+
+  // Modal Reset Sesi
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("algocraft_teacher");
@@ -96,6 +103,33 @@ export default function TeacherDashboardPage() {
       alert("Error: " + err.message);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleResetSession = async () => {
+    if (!sessionCode) return;
+    setResetting(true);
+    setResetSuccessMsg("");
+
+    try {
+      const res = await fetch("/api/session/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionCode }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowResetModal(false);
+        setResetSuccessMsg(data.message || `Sesi ${sessionCode} berhasil di-reset.`);
+        fetchStats();
+        setTimeout(() => setResetSuccessMsg(""), 6000);
+      } else {
+        alert(data.error || "Gagal mereset sesi.");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -221,6 +255,15 @@ export default function TeacherDashboardPage() {
             </button>
 
             <button
+              onClick={() => setShowResetModal(true)}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
+              title="Reset Seluruh Data Murid & Nilai pada Sesi Ini"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+              <span>Reset Sesi</span>
+            </button>
+
+            <button
               onClick={fetchStats}
               title="Perbarui Data"
               className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 transition-colors cursor-pointer"
@@ -241,6 +284,22 @@ export default function TeacherDashboardPage() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+        {/* Banner Sukses Reset Sesi */}
+        {resetSuccessMsg && (
+          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-3 rounded-2xl text-xs flex items-center justify-between shadow-xs animate-fade-in print:hidden">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">{resetSuccessMsg}</span>
+            </div>
+            <button
+              onClick={() => setResetSuccessMsg("")}
+              className="text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Banner Info Sesi */}
         <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-6 rounded-3xl shadow-md flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -566,6 +625,68 @@ export default function TeacherDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Reset Sesi */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-100 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-black text-slate-900">
+                Konfirmasi Reset Sesi Kelas
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Tindakan ini akan <strong>menghapus seluruh data murid, nilai asesmen (TP 1 - TP 6), dan riwayat pengerjaan</strong> pada sesi:
+              </p>
+              <div className="inline-block font-mono font-bold text-xs text-rose-700 bg-rose-50 px-3 py-1 rounded-xl border border-rose-200">
+                {sessionCode}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Sesi kelas ini akan kembali kosong (0 murid) dan siap digunakan untuk putaran pembelajaran baru.
+              </p>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 space-y-0.5">
+              <span className="font-bold">⚠️ Perhatian Pengajar:</span>
+              <p className="text-amber-800">
+                Pastikan Anda telah mengekspor nilai (Excel/CSV) atau mencetak laporan jika data sebelumnya masih diperlukan.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={resetting}
+                onClick={() => setShowResetModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={resetting}
+                onClick={handleResetSession}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-200 flex items-center gap-1.5 cursor-pointer"
+              >
+                {resetting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mereset Data...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Ya, Reset Sesi Ini</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
