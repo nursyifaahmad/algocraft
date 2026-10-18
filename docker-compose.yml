@@ -1,0 +1,43 @@
+services:
+  algocraft-db:
+    image: postgres:16-alpine
+    container_name: algocraft-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: algocraft_db
+      POSTGRES_USER: algocraft_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-rahasia_algocraft_123}
+    volumes:
+      # Data persisten database di mini PC
+      - /mnt/storage2/algocraft/postgres_data:/var/lib/postgresql/data
+    networks:
+      - algocraft-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U algocraft_user -d algocraft_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  algocraft-app:
+    build: .
+    container_name: algocraft-app
+    restart: unless-stopped
+    ports:
+      # Port 3060 bebas bentrok dengan Wedding Tracker (3050) & Immich (2283/3001)
+      - "3060:3000"
+    environment:
+      DATABASE_URL: "postgresql://algocraft_user:${DB_PASSWORD:-rahasia_algocraft_123}@algocraft-db:5432/algocraft_db"
+      JWT_SECRET: ${JWT_SECRET:-kunci_rahasia_jwt_algocraft_2026}
+      NODE_ENV: production
+      PORT: 3000
+      BASE_URL: ${BASE_URL:-https://algocraft.ahmadnursyifa.my.id}
+    depends_on:
+      algocraft-db:
+        condition: service_healthy
+    networks:
+      - algocraft-net
+
+networks:
+  algocraft-net:
+    name: algocraft-net
+    driver: bridge

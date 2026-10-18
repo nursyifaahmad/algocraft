@@ -1,0 +1,279 @@
+"use client";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Sparkles,
+  Gamepad2,
+  GraduationCap,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle,
+  HelpCircle,
+  AlertCircle,
+  UserCheck,
+} from "lucide-react";
+
+const AVATARS = [
+  { id: "avatar-1", icon: "🤖", label: "Cyber Robot" },
+  { id: "avatar-2", icon: "👨‍🍳", label: "Master Chef" },
+  { id: "avatar-3", icon: "🕵️‍♂️", label: "Bug Detective" },
+  { id: "avatar-4", icon: "🧙‍♂️", label: "Logic Wizard" },
+];
+
+export default function LandingPage() {
+  const router = useRouter();
+
+  // Student Fast-Login Form
+  const [name, setName] = useState("");
+  const [absentNo, setAbsentNo] = useState("");
+  const [sessionCode, setSessionCode] = useState("X5-KANTIN");
+  const [selectedAvatar, setSelectedAvatar] = useState("avatar-1");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleStudentJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !absentNo || !sessionCode.trim()) {
+      setErrorMsg("Nama, Nomor Absen, dan Kode Sesi wajib diisi!");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg("");
+
+    try {
+      const res = await fetch("/api/student/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          absentNo: parseInt(absentNo, 10),
+          sessionCode: sessionCode.trim().toUpperCase(),
+          avatar: selectedAvatar,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal masuk sesi.");
+        setLoading(false);
+        return;
+      }
+
+      // Redirect ke game arena
+      router.push(`/play?studentId=${data.student.id}`);
+    } catch (err: any) {
+      setErrorMsg("Terjadi gangguan jaringan: " + err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Background Glow */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 blur-[130px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 blur-[130px] rounded-full" />
+      </div>
+
+      {/* Top Navbar */}
+      <nav className="relative z-10 max-w-6xl mx-auto w-full px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30">
+            ⚡
+          </div>
+          <div>
+            <span className="text-base font-black tracking-tight text-white block leading-none">
+              AlgoCraft
+            </span>
+            <span className="text-[10px] font-bold text-indigo-400 tracking-wider uppercase">
+              PBL Gamification Web
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => router.push("/teacher/login")}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 transition-all cursor-pointer"
+        >
+          <GraduationCap className="w-4 h-4 text-indigo-400" />
+          <span>Portal Guru</span>
+        </button>
+      </nav>
+
+      {/* Hero & Fast Login Section */}
+      <main className="relative z-10 max-w-6xl mx-auto w-full px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        {/* Kolom Kiri: Narasi Problem Based Learning */}
+        <div className="lg:col-span-6 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Problem Based Learning • Kelas X-5</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight text-white">
+            Petualangan Membangun{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">
+              Kantin Digital Pintar
+            </span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            Pecahkan antrean panjang kantin sekolah dengan merancang sistem algoritma kasir otomatis!
+            Pelajari konsep <strong>Input-Proses-Output</strong>, susun alur sekuensial, terapkan
+            <strong> percabangan IF-ELSE</strong>, buat diagram alir kanvas, rangkai <strong>pseudocode</strong>,
+            dan buru bug sistem dengan tabel uji.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 pt-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <span>Responsif HP & Komputer</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <span>Sistem Nyawa, Koin & XP</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <span>7 Lencana Prestasi Belajar</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <span>Rubrik Asesmen PPG Otomatis</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Kolom Kanan: Form Masuk Cepat Siswa */}
+        <div className="lg:col-span-6">
+          <div className="bg-slate-900/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Gamepad2 className="w-5 h-5 text-indigo-400" />
+                  <span>Akses Cepat Siswa</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Masuk tanpa registrasi email/password.
+                </p>
+              </div>
+              <span className="text-[11px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold">
+                Online
+              </span>
+            </div>
+
+            {errorMsg && (
+              <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-950/80 p-3 rounded-xl border border-rose-800">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleStudentJoin} className="space-y-4 text-xs">
+              {/* Nama Siswa */}
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1.5">
+                  Nama Lengkap Siswa:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Muhammad Fikri"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                />
+              </div>
+
+              {/* Nomor Absen & Kode Sesi */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1.5">
+                    Nomor Absen:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    required
+                    placeholder="Contoh: 14"
+                    value={absentNo}
+                    onChange={(e) => setAbsentNo(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1.5">
+                    Kode Sesi Kelas:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={sessionCode}
+                    onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                    className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-indigo-300 font-mono font-bold uppercase focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Pilihan Avatar */}
+              <div>
+                <label className="block text-slate-300 font-semibold mb-2">
+                  Pilih Avatar Petualang Kamu:
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {AVATARS.map((av) => {
+                    const isSelected = selectedAvatar === av.id;
+                    return (
+                      <button
+                        type="button"
+                        key={av.id}
+                        onClick={() => setSelectedAvatar(av.id)}
+                        className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-indigo-600/30 border-indigo-400 ring-2 ring-indigo-400/40"
+                            : "bg-slate-950/50 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        <span className="text-2xl block">{av.icon}</span>
+                        <span className="text-[10px] text-slate-400 font-semibold truncate block mt-1">
+                          {av.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <span>Menghubungkan Sesi...</span>
+                ) : (
+                  <>
+                    <span>Mulai Misi Belajar</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
+        <p>
+          AlgoCraft • Inovasi Pembelajaran Berpikir Komputasional & PBL Kelas X-5 Informatika • PPG
+          Prajabatan
+        </p>
+      </footer>
+    </div>
+  );
+}
