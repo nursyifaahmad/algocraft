@@ -183,8 +183,8 @@ export default function LandingPage() {
       {/* Top Navbar */}
       <nav className="relative z-10 max-w-6xl mx-auto w-full px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30">
-            ⚡
+          <div className="w-10 h-10 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-lg shadow-indigo-500/20 overflow-hidden">
+            <img src="/AN-Logo.png" alt="AN Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <span className="text-base font-black tracking-tight text-white block leading-none">

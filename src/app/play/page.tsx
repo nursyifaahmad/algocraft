@@ -452,8 +452,8 @@ function PlayGameContent() {
           {/* Identity & Actions Bar (On mobile: Row 1; On desktop: Left side) */}
           <div className="flex items-center justify-between gap-2 min-w-0">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center font-black text-sm sm:text-base shadow-md shadow-indigo-200 shrink-0">
-                ⚡
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center p-1 shadow-xs shadow-slate-200 shrink-0 overflow-hidden">
+                <img src="/AN-Logo.png" alt="AN Logo" className="w-full h-full object-contain" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-nowrap">
