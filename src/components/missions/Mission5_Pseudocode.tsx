@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { PARSON_DATA, ParsonLine } from "@/data/storyData";
 import {
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ChevronLeft,
   FileCode2,
+  GripVertical,
 } from "lucide-react";
 
 interface Mission5Props {
@@ -50,6 +51,11 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
     isPass: boolean;
   } | null>(null);
 
+  // Status Drag & Drop (Desktop & Mobile)
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const touchStartIndexRef = useRef<number | null>(null);
+
   const moveLine = (index: number, direction: "up" | "down") => {
     if (submitted) return;
     const target = direction === "up" ? index - 1 : index + 1;
@@ -72,6 +78,81 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
     });
   };
 
+  // Drag & Drop HTML5
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (submitted) return;
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    if (submitted) return;
+    e.preventDefault();
+    if (dragOverIdx !== index) {
+      setDragOverIdx(index);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    if (submitted) return;
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === targetIndex) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+
+    const updated = [...lines];
+    const [removed] = updated.splice(draggedIdx, 1);
+    updated.splice(targetIndex, 0, removed);
+
+    setLines(updated);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  // Drag & Drop Touch Mobile
+  const handleTouchStart = (index: number) => {
+    if (submitted) return;
+    touchStartIndexRef.current = index;
+    setDraggedIdx(index);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (submitted || touchStartIndexRef.current === null || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    const lineCard = targetElement?.closest("[data-line-index]");
+    if (lineCard) {
+      const hoverIndex = Number(lineCard.getAttribute("data-line-index"));
+      if (!isNaN(hoverIndex) && hoverIndex !== dragOverIdx) {
+        setDragOverIdx(hoverIndex);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (
+      touchStartIndexRef.current !== null &&
+      dragOverIdx !== null &&
+      touchStartIndexRef.current !== dragOverIdx
+    ) {
+      const updated = [...lines];
+      const [removed] = updated.splice(touchStartIndexRef.current, 1);
+      updated.splice(dragOverIdx, 0, removed);
+      setLines(updated);
+    }
+    touchStartIndexRef.current = null;
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
   const handleReset = () => {
     setLines(
       [...PARSON_DATA]
@@ -86,6 +167,8 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
     );
     setSubmitted(false);
     setResult(null);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
   };
 
   const handleSubmit = () => {
@@ -145,16 +228,16 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
           <strong> Pseudocode (Kode Semu)</strong>. Urutkan baris-baris kode berikut dan atur
           <strong> indentasi (ruang masuk)</strong> blok percabangan `JIKA-SELAIN ITU`.
         </p>
-        <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
+        <div className="mt-2 text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-2">
           <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold">
             Target Ketuntasan: Minimal Skor 3 dari Skala 4
           </span>
-          <span>• Gunakan tombol panah Naik/Turun & tombol Tab Masuk/Keluar.</span>
+          <span>• 💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop baris</strong> atau gunakan tombol panah & Tab.</span>
         </div>
       </div>
 
       {/* Code Editor Style View */}
-      <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border border-slate-800 shadow-xl font-mono space-y-2">
+      <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border border-slate-800 shadow-xl font-mono space-y-2 select-none">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-rose-500" />
@@ -169,20 +252,42 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
           {lines.map((line, idx) => {
             const isRightOrder = submitted && line.correctOrder === idx + 1;
             const isRightIndent = submitted && line.currentIndent === line.expectedIndent;
+            const isDragging = draggedIdx === idx;
+            const isDragOver = dragOverIdx === idx && draggedIdx !== idx;
 
             return (
               <div
                 key={line.id}
+                data-line-index={idx}
+                draggable={!submitted}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                onTouchStart={() => handleTouchStart(idx)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
                 className={`flex items-center gap-2 p-2 rounded-xl transition-all ${
-                  submitted
+                  isDragging
+                    ? "opacity-40 border border-dashed border-cyan-400 bg-cyan-950/40"
+                    : isDragOver
+                    ? "border-2 border-cyan-400 bg-cyan-950/60 shadow-md"
+                    : submitted
                     ? isRightOrder && isRightIndent
                       ? "bg-emerald-950/70 border border-emerald-600 text-emerald-200"
                       : "bg-rose-950/70 border border-rose-600 text-rose-200"
-                    : "bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200"
+                    : "bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 cursor-grab active:cursor-grabbing"
                 }`}
               >
+                {/* Grip Handle */}
+                {!submitted && (
+                  <div className="text-slate-600 hover:text-slate-400 cursor-grab active:cursor-grabbing px-0.5">
+                    <GripVertical className="w-3.5 h-3.5" />
+                  </div>
+                )}
+
                 {/* Line number */}
-                <div className="w-6 text-right text-xs text-slate-500 select-none flex-shrink-0">
+                <div className="w-5 text-right text-xs text-slate-500 select-none flex-shrink-0">
                   {idx + 1}
                 </div>
 
@@ -213,7 +318,10 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
                     {/* Indent Controls */}
                     <button
                       disabled={line.currentIndent === 0}
-                      onClick={() => changeIndent(idx, -1)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changeIndent(idx, -1);
+                      }}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-20 text-slate-300 transition-colors cursor-pointer"
                       title="Geser Keluar (Kurangi Indent)"
                     >
@@ -221,7 +329,10 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
                     </button>
                     <button
                       disabled={line.currentIndent >= 2}
-                      onClick={() => changeIndent(idx, 1)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changeIndent(idx, 1);
+                      }}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-20 text-slate-300 transition-colors cursor-pointer"
                       title="Geser Masuk (Tambah Indent)"
                     >
@@ -231,7 +342,10 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
                     {/* Order Controls */}
                     <button
                       disabled={idx === 0}
-                      onClick={() => moveLine(idx, "up")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveLine(idx, "up")}
+                      }
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-20 text-slate-300 transition-colors cursor-pointer ml-1"
                       title="Naikkan Baris"
                     >
@@ -239,7 +353,10 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
                     </button>
                     <button
                       disabled={idx === lines.length - 1}
-                      onClick={() => moveLine(idx, "down")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveLine(idx, "down");
+                      }}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-20 text-slate-300 transition-colors cursor-pointer"
                       title="Turunkan Baris"
                     >

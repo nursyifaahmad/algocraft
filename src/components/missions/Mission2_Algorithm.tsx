@@ -1,8 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { ALGO_STEPS_DATA, AlgoStep } from "@/data/storyData";
-import { CheckCircle2, AlertCircle, ArrowUp, ArrowDown, ArrowRight, RotateCcw, ListOrdered } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowRight,
+  RotateCcw,
+  ListOrdered,
+  GripVertical,
+} from "lucide-react";
 
 interface Mission2Props {
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
@@ -23,6 +32,12 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
     isPass: boolean;
   } | null>(null);
 
+  // Status Drag & Drop (Desktop & Mobile)
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const touchStartIndexRef = useRef<number | null>(null);
+
+  // Pemindahan dengan Tombol Panah (Up / Down)
   const moveStep = (index: number, direction: "up" | "down") => {
     if (submitted) return;
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -35,10 +50,87 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
     setSteps(newSteps);
   };
 
+  // Drag & Drop HTML5 (Desktop Mouse)
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (submitted) return;
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    if (submitted) return;
+    e.preventDefault();
+    if (dragOverIdx !== index) {
+      setDragOverIdx(index);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    if (submitted) return;
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === targetIndex) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+
+    const updatedSteps = [...steps];
+    const [removed] = updatedSteps.splice(draggedIdx, 1);
+    updatedSteps.splice(targetIndex, 0, removed);
+
+    setSteps(updatedSteps);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  // Drag & Drop Touch (Layar Sentuh HP Android / iOS)
+  const handleTouchStart = (index: number) => {
+    if (submitted) return;
+    touchStartIndexRef.current = index;
+    setDraggedIdx(index);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (submitted || touchStartIndexRef.current === null || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    const stepCard = targetElement?.closest("[data-step-index]");
+    if (stepCard) {
+      const hoverIndex = Number(stepCard.getAttribute("data-step-index"));
+      if (!isNaN(hoverIndex) && hoverIndex !== dragOverIdx) {
+        setDragOverIdx(hoverIndex);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (
+      touchStartIndexRef.current !== null &&
+      dragOverIdx !== null &&
+      touchStartIndexRef.current !== dragOverIdx
+    ) {
+      const updatedSteps = [...steps];
+      const [removed] = updatedSteps.splice(touchStartIndexRef.current, 1);
+      updatedSteps.splice(dragOverIdx, 0, removed);
+      setSteps(updatedSteps);
+    }
+    touchStartIndexRef.current = null;
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
   const handleReset = () => {
     setSteps([...ALGO_STEPS_DATA].sort(() => Math.random() - 0.5));
     setSubmitted(false);
     setResult(null);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
   };
 
   const handleSubmit = () => {
@@ -89,31 +181,56 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
           Kasir kantin membutuhkan panduan alur langkah yang terstruktur dari awal hingga selesai.
           Susunlah 7 langkah algoritma di bawah ini agar urutan transaksinya logis dan sistematis.
         </p>
-        <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
+        <div className="mt-2 text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-2">
           <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-bold">
             Target Ketuntasan: Minimal Skor 3 dari Skala 4
           </span>
-          <span>• Gunakan tombol panah Naik / Turun untuk memindahkan posisi langkah.</span>
+          <span>• 💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop (geser langsung)</strong> kartu atau gunakan tombol panah Naik / Turun.</span>
         </div>
       </div>
 
-      {/* Daftar Langkah Interaktif */}
-      <div className="space-y-2.5 max-w-2xl mx-auto">
+      {/* Daftar Langkah Interaktif dengan Drag & Drop */}
+      <div className="space-y-2.5 max-w-2xl mx-auto select-none">
         {steps.map((step, idx) => {
           const isCorrect = submitted && step.order === idx + 1;
           const isWrong = submitted && step.order !== idx + 1;
+          const isDragging = draggedIdx === idx;
+          const isDragOver = dragOverIdx === idx && draggedIdx !== idx;
 
           return (
             <div
               key={step.id}
+              data-step-index={idx}
+              draggable={!submitted}
+              onDragStart={(e) => handleDragStart(e, idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDrop={(e) => handleDrop(e, idx)}
+              onDragEnd={handleDragEnd}
+              onTouchStart={() => handleTouchStart(idx)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${
-                submitted
+                isDragging
+                  ? "opacity-40 border-dashed border-indigo-400 bg-indigo-50/50 scale-98"
+                  : isDragOver
+                  ? "border-2 border-indigo-500 bg-indigo-50/80 shadow-md scale-102"
+                  : submitted
                   ? isCorrect
                     ? "bg-emerald-50 border-emerald-300 text-emerald-950"
                     : "bg-rose-50 border-rose-300 text-rose-950"
-                  : "bg-white border-slate-200 hover:border-slate-300 shadow-xs"
+                  : "bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
               }`}
             >
+              {/* Grip Handle untuk Drag & Drop */}
+              {!submitted && (
+                <div
+                  className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing p-1 flex-shrink-0"
+                  title="Geser untuk memindahkan posisi"
+                >
+                  <GripVertical className="w-4 h-4" />
+                </div>
+              )}
+
               {/* Nomor Urut */}
               <div
                 className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
@@ -129,7 +246,7 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
 
               {/* Teks Instruksi */}
               <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-semibold">{step.text}</p>
+                <p className="text-xs sm:text-sm font-semibold text-slate-800">{step.text}</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">{step.description}</p>
                 {submitted && isWrong && (
                   <p className="text-[10px] text-rose-600 mt-1 font-bold">
@@ -138,7 +255,7 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
                 )}
               </div>
 
-              {/* Tombol Geser (Ramah Layar Sentuh Mobile) */}
+              {/* Tombol Geser Panah Alternatif */}
               {!submitted && (
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
