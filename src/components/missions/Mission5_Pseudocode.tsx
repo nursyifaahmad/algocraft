@@ -214,7 +214,10 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
 
     lines.forEach((line, idx) => {
       const isRightOrder = line.correctOrder === idx + 1;
-      const isRightIndent = line.currentIndent === line.expectedIndent;
+      const isRightIndent =
+        line.id === "pl-var"
+          ? line.currentIndent === 0 || line.currentIndent === 1
+          : line.currentIndent === line.expectedIndent;
 
       if (isRightOrder) correctOrderCount += 1;
       if (isRightOrder && isRightIndent) correctIndentCount += 1;
@@ -264,8 +267,9 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
         </div>
         <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
           Sebelum dikonversi ke kode komputer nyata, algoritma kasir ditulis dalam format
-          <strong> Pseudocode (Kode Semu)</strong>. Urutkan baris-baris kode berikut dan atur
-          <strong> indentasi (ruang masuk)</strong> blok percabangan `JIKA-SELAIN ITU`.
+          <strong> Pseudocode (Kode Semu)</strong>. Urutkan baris-baris kode berikut (termasuk 
+          <strong> Judul PROGRAM</strong>, <strong>DEKLARASI Variabel</strong>, dan <strong>Blok Algoritma MULAI-SELESAI</strong>) serta atur
+          <strong> indentasi (ruang masuk)</strong> pada percabangan `JIKA-SELAIN ITU`.
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-2">
           <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold">
@@ -306,7 +310,11 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
         <div className="space-y-2 pt-2">
           {lines.map((line, idx) => {
             const isRightOrder = submitted && line.correctOrder === idx + 1;
-            const isRightIndent = submitted && line.currentIndent === line.expectedIndent;
+            const isRightIndent =
+              submitted &&
+              (line.id === "pl-var"
+                ? line.currentIndent === 0 || line.currentIndent === 1
+                : line.currentIndent === line.expectedIndent);
             const isDragging = draggedIdx === idx;
             const isDragOver = dragOverIdx === idx && draggedIdx !== idx;
 
