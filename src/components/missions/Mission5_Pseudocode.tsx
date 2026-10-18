@@ -93,21 +93,24 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
     const target = direction === "up" ? index - 1 : index + 1;
     if (target < 0 || target >= lines.length) return;
 
-    const copy = [...lines];
-    const temp = copy[index];
-    copy[index] = copy[target];
-    copy[target] = temp;
-    setLines(copy);
+    setLines((prev) => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[target];
+      copy[target] = temp;
+      return copy;
+    });
   };
 
   const changeIndent = (index: number, delta: number) => {
     if (submitted) return;
-    setLines((prev) => {
-      const copy = [...prev];
-      const newIndent = Math.max(0, Math.min(2, copy[index].currentIndent + delta));
-      copy[index].currentIndent = newIndent;
-      return copy;
-    });
+    setLines((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const newIndent = Math.max(0, Math.min(3, item.currentIndent + delta));
+        return { ...item, currentIndent: newIndent };
+      })
+    );
   };
 
   // Drag & Drop HTML5
@@ -207,17 +210,45 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
     } catch (e) {}
   };
 
+  const checkLineIndent = (line: UserLine) => {
+    // Header & Terminator utama wajib rata kiri (indent 0)
+    if (
+      line.id === "pl-1" ||
+      line.id === "pl-deklarasi" ||
+      line.id === "pl-mulai" ||
+      line.id === "pl-9"
+    ) {
+      return line.currentIndent === 0;
+    }
+    // Deklarasi variabel: bisa rata kiri (0) atau menjorok di bawah DEKLARASI (1)
+    if (line.id === "pl-var") {
+      return line.currentIndent === 0 || line.currentIndent === 1;
+    }
+    // Statement utama di dalam blok algoritma MULAI: bisa rata kiri (0) atau 1 tingkat (1)
+    if (
+      line.id === "pl-2" ||
+      line.id === "pl-3" ||
+      line.id === "pl-6" ||
+      line.id === "pl-8"
+    ) {
+      return line.currentIndent === 0 || line.currentIndent === 1;
+    }
+    // Statement di dalam percabangan JIKA & SELAIN ITU:
+    // Menjorok 1 tingkat lebih dalam: bisa indent 1 (jika luar 0) atau indent 2 (jika luar 1)
+    if (line.id === "pl-4" || line.id === "pl-5" || line.id === "pl-7") {
+      return line.currentIndent === 1 || line.currentIndent === 2;
+    }
+    return line.currentIndent === line.expectedIndent;
+  };
+
   const handleSubmit = () => {
     let correctOrderCount = 0;
     let correctIndentCount = 0;
-    const total = lines.length; // 9 baris
+    const total = lines.length;
 
     lines.forEach((line, idx) => {
       const isRightOrder = line.correctOrder === idx + 1;
-      const isRightIndent =
-        line.id === "pl-var"
-          ? line.currentIndent === 0 || line.currentIndent === 1
-          : line.currentIndent === line.expectedIndent;
+      const isRightIndent = checkLineIndent(line);
 
       if (isRightOrder) correctOrderCount += 1;
       if (isRightOrder && isRightIndent) correctIndentCount += 1;
@@ -310,11 +341,7 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
         <div className="space-y-2 pt-2">
           {lines.map((line, idx) => {
             const isRightOrder = submitted && line.correctOrder === idx + 1;
-            const isRightIndent =
-              submitted &&
-              (line.id === "pl-var"
-                ? line.currentIndent === 0 || line.currentIndent === 1
-                : line.currentIndent === line.expectedIndent);
+            const isRightIndent = submitted && checkLineIndent(line);
             const isDragging = draggedIdx === idx;
             const isDragOver = dragOverIdx === idx && draggedIdx !== idx;
 
@@ -356,11 +383,16 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
 
                 {/* Indented Text Area */}
                 <div
-                  style={{ paddingLeft: `${line.currentIndent * 28}px` }}
+                  style={{ paddingLeft: `${line.currentIndent * 24}px` }}
                   className="flex-1 text-xs sm:text-sm font-semibold truncate transition-all flex items-center gap-1.5"
                 >
                   {line.currentIndent > 0 && (
-                    <span className="text-slate-600 text-[10px] select-none">└──</span>
+                    <span className="text-slate-500 font-mono text-[11px] select-none flex items-center shrink-0">
+                      {Array.from({ length: line.currentIndent - 1 }).map((_, i) => (
+                        <span key={i} className="text-slate-600/80 mr-1 select-none">│ </span>
+                      ))}
+                      <span className="text-cyan-400 font-bold select-none">└──</span>
+                    </span>
                   )}
                   <span>{line.text}</span>
                   {submitted && !isRightOrder && (
@@ -391,7 +423,7 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      disabled={line.currentIndent >= 2}
+                      disabled={line.currentIndent >= 3}
                       onClick={(e) => {
                         e.stopPropagation();
                         changeIndent(idx, 1);
