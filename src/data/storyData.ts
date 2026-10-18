@@ -38,6 +38,12 @@ export interface ParsonLine {
   text: string;
 }
 
+export interface DebugCodeLine {
+  lineNum: number;
+  indent: number;
+  text: string;
+}
+
 export interface DebugScenario {
   id: string;
   title: string;
@@ -54,6 +60,7 @@ export interface DebugScenario {
     status: string;
   };
   buggyCode: string[];
+  codeLines: DebugCodeLine[];
   buggyLineIndex: number; // 0-indexed
   optionsToFix: {
     id: string;
@@ -380,6 +387,17 @@ export const DEBUG_SCENARIOS: DebugScenario[] = [
       "8:   TAMPILKAN 'Saldo Kurang!'",
       "9: SELESAI",
     ],
+    codeLines: [
+      { lineNum: 1, indent: 0, text: "MULAI" },
+      { lineNum: 2, indent: 1, text: "BACA total_harga, saldo_kartu" },
+      { lineNum: 3, indent: 1, text: "total_bayar = total_harga" },
+      { lineNum: 4, indent: 1, text: "JIKA saldo_kartu > total_bayar MAKA" },
+      { lineNum: 5, indent: 2, text: "saldo_akhir = saldo_kartu - total_bayar" },
+      { lineNum: 6, indent: 2, text: "TAMPILKAN 'Transaksi Berhasil'" },
+      { lineNum: 7, indent: 1, text: "SELAIN ITU" },
+      { lineNum: 8, indent: 2, text: "TAMPILKAN 'Saldo Kurang!'" },
+      { lineNum: 9, indent: 0, text: "SELESAI" },
+    ],
     buggyLineIndex: 3, // Baris 4: JIKA saldo_kartu > total_bayar (seharusnya >=)
     optionsToFix: [
       {
@@ -425,6 +443,14 @@ export const DEBUG_SCENARIOS: DebugScenario[] = [
       "4: total_bayar = total_belanja + diskon",
       "5: TAMPILKAN total_bayar",
       "6: SELESAI",
+    ],
+    codeLines: [
+      { lineNum: 1, indent: 0, text: "MULAI" },
+      { lineNum: 2, indent: 1, text: "BACA total_belanja" },
+      { lineNum: 3, indent: 1, text: "diskon = 0.15 * total_belanja" },
+      { lineNum: 4, indent: 1, text: "total_bayar = total_belanja + diskon" },
+      { lineNum: 5, indent: 1, text: "TAMPILKAN total_bayar" },
+      { lineNum: 6, indent: 0, text: "SELESAI" },
     ],
     buggyLineIndex: 3, // Baris 4: total_belanja + diskon
     optionsToFix: [
