@@ -13,6 +13,7 @@ import { Mission3_Branching } from "@/components/missions/Mission3_Branching";
 import { Mission4_Flowchart } from "@/components/missions/Mission4_Flowchart";
 import { Mission5_Pseudocode } from "@/components/missions/Mission5_Pseudocode";
 import { Mission6_Debugging } from "@/components/missions/Mission6_Debugging";
+import { GamificationRulesModal } from "@/components/GamificationRulesModal";
 import {
   Trophy,
   ArrowRight,
@@ -26,6 +27,7 @@ import {
   WifiOff,
   Database,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 
 function PlayGameContent() {
@@ -42,6 +44,7 @@ function PlayGameContent() {
   const [showBadges, setShowBadges] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // Waktu pengerjaan misi (detik)
   const [timeSpent, setTimeSpent] = useState<number>(0);
@@ -400,16 +403,27 @@ function PlayGameContent() {
             </div>
           </div>
 
-          {/* Gamification HeartBar */}
-          <HeartBar
-            hearts={student.hearts}
-            xp={student.xp}
-            coins={student.coins}
-            currentLevel={student.currentLevel}
-            onOpenBadges={() => setShowBadges(true)}
-            onOpenLeaderboard={() => setShowLeaderboard(true)}
-            onOpenHint={() => setShowHint(true)}
-          />
+          {/* Gamification HeartBar & Rules */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowRules(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
+              title="Lihat Aturan Permainan Gamifikasi"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="hidden sm:inline">Aturan Main</span>
+            </button>
+
+            <HeartBar
+              hearts={student.hearts}
+              xp={student.xp}
+              coins={student.coins}
+              currentLevel={student.currentLevel}
+              onOpenBadges={() => setShowBadges(true)}
+              onOpenLeaderboard={() => setShowLeaderboard(true)}
+              onOpenHint={() => setShowHint(true)}
+            />
+          </div>
         </div>
       </header>
 
@@ -556,6 +570,13 @@ function PlayGameContent() {
         onDeductCoins={handleDeductCoins}
         hintLevel1Text={currentHints.hint1}
         hintLevel2Text={currentHints.hint2}
+      />
+      <GamificationRulesModal
+        isOpen={showRules}
+        onClose={() => setShowRules(false)}
+        onConfirm={() => setShowRules(false)}
+        studentName={student.name}
+        isFirstTime={false}
       />
     </div>
   );

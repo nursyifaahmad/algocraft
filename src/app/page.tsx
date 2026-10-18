@@ -14,6 +14,8 @@ import {
   Zap,
 } from "lucide-react";
 
+import { GamificationRulesModal } from "@/components/GamificationRulesModal";
+
 const AVATARS = [
   { id: "avatar-1", icon: "🤖", label: "Cyber Robot" },
   { id: "avatar-2", icon: "👨‍🍳", label: "Master Chef" },
@@ -31,6 +33,11 @@ export default function LandingPage() {
   const [selectedAvatar, setSelectedAvatar] = useState("avatar-1");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Gamification Rules Modal Pop-up
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [pendingStudentId, setPendingStudentId] = useState<string | null>(null);
+  const [registeredStudentName, setRegisteredStudentName] = useState<string>("");
 
   // Persistent Saved Session State
   const [savedSession, setSavedSession] = useState<{
@@ -113,11 +120,20 @@ export default function LandingPage() {
       localStorage.setItem("algocraft_student_session", JSON.stringify(sessionData));
       localStorage.setItem("algocraft_student_id", data.student.id);
 
-      // Redirect ke game arena
-      router.push(`/play?studentId=${data.student.id}`);
+      // Tampilkan popup aturan gamifikasi sebelum masuk ke arena permainan
+      setPendingStudentId(data.student.id);
+      setRegisteredStudentName(data.student.name);
+      setShowRulesModal(true);
+      setLoading(false);
     } catch (err: any) {
       setErrorMsg("Terjadi gangguan jaringan: " + err.message);
       setLoading(false);
+    }
+  };
+
+  const handleStartAfterRules = () => {
+    if (pendingStudentId) {
+      router.push(`/play?studentId=${pendingStudentId}`);
     }
   };
 
@@ -371,6 +387,14 @@ export default function LandingPage() {
           Prajabatan
         </p>
       </footer>
+
+      {/* Modal Pop-up Aturan Gamifikasi */}
+      <GamificationRulesModal
+        isOpen={showRulesModal}
+        studentName={registeredStudentName}
+        onConfirm={handleStartAfterRules}
+        isFirstTime={true}
+      />
     </div>
   );
 }
