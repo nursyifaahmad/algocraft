@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, HelpCircle, Coins, Sparkles, Check, AlertCircle } from "lucide-react";
+import { X, HelpCircle, Coins, Check, AlertCircle } from "lucide-react";
 
 interface HintModalProps {
   isOpen: boolean;

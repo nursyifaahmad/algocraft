@@ -14,7 +14,6 @@ import { Mission4_Flowchart } from "@/components/missions/Mission4_Flowchart";
 import { Mission5_Pseudocode } from "@/components/missions/Mission5_Pseudocode";
 import { Mission6_Debugging } from "@/components/missions/Mission6_Debugging";
 import {
-  Sparkles,
   Trophy,
   ArrowRight,
   ArrowLeft,

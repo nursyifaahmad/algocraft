@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles,
+  Target,
   Gamepad2,
   GraduationCap,
   ArrowRight,
@@ -159,7 +159,7 @@ export default function LandingPage() {
         {/* Kolom Kiri: Narasi Problem Based Learning */}
         <div className="lg:col-span-6 space-y-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <Target className="w-3.5 h-3.5 text-indigo-400" />
             <span>Problem Based Learning • Kelas X-5</span>
           </div>
 

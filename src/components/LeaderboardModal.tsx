@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Trophy, Medal, Sparkles, User } from "lucide-react";
+import { X, Trophy, Medal, User } from "lucide-react";
 
 interface LeaderboardStudent {
   id: string;

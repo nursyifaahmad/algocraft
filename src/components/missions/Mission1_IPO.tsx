@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { IPO_DATA, IPOCard } from "@/data/storyData";
-import { CheckCircle2, AlertCircle, ArrowRight, RotateCcw, Sparkles, Save } from "lucide-react";
+import { CheckCircle2, AlertCircle, ArrowRight, RotateCcw, Layers, Save } from "lucide-react";
 
 interface Mission1Props {
   studentId?: string;
@@ -131,7 +131,7 @@ export const Mission1_IPO: React.FC<Mission1Props> = ({ studentId, onSuccess, on
       {/* Kasus & Panduan Masalah (PBL Orientation) */}
       <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent p-5 rounded-2xl border border-blue-200/80">
         <div className="flex items-center gap-2 text-blue-800 font-bold text-sm mb-1">
-          <Sparkles className="w-4 h-4 text-blue-600" />
+          <Layers className="w-4 h-4 text-blue-600" />
           <span>Misi 1: Kotak Hitam Kasir Pintar (Identifikasi IPO)</span>
         </div>
         <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">

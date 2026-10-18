@@ -7,7 +7,8 @@ import {
   AlertCircle,
   ArrowRight,
   RotateCcw,
-  Sparkles,
+  Workflow,
+  FileText,
   Plus,
   Trash2,
   Share2,
@@ -476,7 +477,7 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
       {/* Pengantar Masalah (PBL) */}
       <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent p-5 rounded-2xl border border-amber-200/80">
         <div className="flex items-center gap-2 text-amber-800 font-bold text-sm mb-1">
-          <Sparkles className="w-4 h-4 text-amber-600" />
+          <Workflow className="w-4 h-4 text-amber-600" />
           <span>Misi 4: Desain Diagram Alir Mandiri (Kertas Gambar Kosong)</span>
         </div>
         <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
@@ -602,7 +603,7 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
         {nodes.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
             <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-3">
-              <Sparkles className="w-8 h-8" />
+              <FileText className="w-8 h-8" />
             </div>
             <h3 className="text-sm font-bold text-slate-700">Kertas Diagram Alir Kosong</h3>
             <p className="text-xs text-slate-400 max-w-sm mt-1">
