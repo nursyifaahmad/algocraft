@@ -8,9 +8,11 @@ interface HeartBarProps {
   xp: number;
   coins: number;
   currentLevel: number;
+  isFinished?: boolean;
   onOpenLeaderboard?: () => void;
   onOpenBadges?: () => void;
   onOpenHint?: () => void;
+  onOpenCompletion?: () => void;
 }
 
 export const HeartBar: React.FC<HeartBarProps> = ({
@@ -18,9 +20,11 @@ export const HeartBar: React.FC<HeartBarProps> = ({
   xp,
   coins,
   currentLevel,
+  isFinished = false,
   onOpenLeaderboard,
   onOpenBadges,
   onOpenHint,
+  onOpenCompletion,
 }) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-slate-200">
@@ -57,10 +61,22 @@ export const HeartBar: React.FC<HeartBarProps> = ({
           <span className="text-xs font-bold text-indigo-700">{xp} XP</span>
         </div>
 
-        {/* Level */}
-        <div className="hidden md:flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/80">
-          <span className="text-xs font-bold text-emerald-700">Misi {currentLevel}/6</span>
-        </div>
+        {/* Level / Status Kelulusan */}
+        {isFinished ? (
+          <button
+            onClick={onOpenCompletion}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-500 hover:to-yellow-500 text-slate-950 px-3 py-1 rounded-full border border-amber-300 shadow-sm font-extrabold text-xs transition-all cursor-pointer transform hover:scale-105 active:scale-95"
+            title="Lihat Sertifikat & Rapor Kelulusan PBL"
+          >
+            <Trophy className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+            <span>Lulus PBL</span>
+            <Award className="w-3.5 h-3.5 text-slate-950" />
+          </button>
+        ) : (
+          <div className="hidden md:flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/80">
+            <span className="text-xs font-bold text-emerald-700">Misi {currentLevel}/6</span>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons: Hint, Badges, Leaderboard */}

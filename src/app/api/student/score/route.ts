@@ -159,6 +159,11 @@ export async function POST(req: Request) {
         isFinished,
       },
       include: {
+        session: {
+          include: {
+            teacher: true,
+          },
+        },
         scores: true,
         badges: true,
       },

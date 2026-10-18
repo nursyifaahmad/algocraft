@@ -14,6 +14,7 @@ import { Mission4_Flowchart } from "@/components/missions/Mission4_Flowchart";
 import { Mission5_Pseudocode } from "@/components/missions/Mission5_Pseudocode";
 import { Mission6_Debugging } from "@/components/missions/Mission6_Debugging";
 import { GamificationRulesModal } from "@/components/GamificationRulesModal";
+import { CompletionCertificateModal } from "@/components/CompletionCertificateModal";
 import {
   Trophy,
   ArrowRight,
@@ -45,6 +46,8 @@ function PlayGameContent() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [completionDefaultTab, setCompletionDefaultTab] = useState<"rapor" | "certificate">("rapor");
 
   // Waktu pengerjaan misi (detik)
   const [timeSpent, setTimeSpent] = useState<number>(0);
@@ -180,6 +183,21 @@ function PlayGameContent() {
     }
   };
 
+  // Auto-tampilkan selebrasi kelulusan jika sudah tuntas 6 misi (1 kali per sesi browser)
+  useEffect(() => {
+    if (student?.isFinished && student?.id) {
+      const hasCelebrated = sessionStorage.getItem(`algocraft_completion_celebrated_${student.id}`);
+      if (!hasCelebrated) {
+        sessionStorage.setItem(`algocraft_completion_celebrated_${student.id}`, "true");
+        const timer = setTimeout(() => {
+          setCompletionDefaultTab("rapor");
+          setShowCompletion(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [student?.isFinished, student?.id]);
+
   const handleWrongAttempt = async () => {
     if (!student) return;
     try {
@@ -278,8 +296,12 @@ function PlayGameContent() {
           localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(data.student));
         } catch (e) {}
 
-        // Jika berhasil dan bukan misi terakhir, buka tab berikutnya
-        if (data.isPassing && activeTab < 6) {
+        if (data.student?.isFinished) {
+          setTimeout(() => {
+            setCompletionDefaultTab("rapor");
+            setShowCompletion(true);
+          }, 1200);
+        } else if (data.isPassing && activeTab < 6) {
           const nextTab = activeTab + 1;
           setTimeout(() => {
             handleTabChange(nextTab);
@@ -303,7 +325,12 @@ function PlayGameContent() {
         localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
       } catch (err) {}
 
-      if (activeTab < 6) {
+      if (isFinished) {
+        setTimeout(() => {
+          setCompletionDefaultTab("rapor");
+          setShowCompletion(true);
+        }, 1200);
+      } else if (activeTab < 6) {
         setTimeout(() => {
           handleTabChange(activeTab + 1);
         }, 1800);
@@ -419,9 +446,14 @@ function PlayGameContent() {
               xp={student.xp}
               coins={student.coins}
               currentLevel={student.currentLevel}
+              isFinished={student.isFinished}
               onOpenBadges={() => setShowBadges(true)}
               onOpenLeaderboard={() => setShowLeaderboard(true)}
               onOpenHint={() => setShowHint(true)}
+              onOpenCompletion={() => {
+                setCompletionDefaultTab("rapor");
+                setShowCompletion(true);
+              }}
             />
           </div>
         </div>
@@ -537,21 +569,48 @@ function PlayGameContent() {
                   Selamat, {student.name}! Kamu Menyelesaikan Seluruh 6 Misi PBL!
                 </h3>
                 <p className="text-xs text-slate-900/80 mt-0.5">
-                  Lencana &quot;Grandmaster Kantin Pintar&quot; telah ditambahkan ke profilmu.
+                  Gelar &quot;Grandmaster Algoritma Kantin Pintar&quot; & Sertifikat Kelulusan Resmi telah diterbitkan.
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowBadges(true)}
-              className="px-5 py-2.5 bg-slate-950 text-white rounded-2xl text-xs font-bold hover:bg-slate-900 transition-colors shadow-md cursor-pointer"
-            >
-              Lihat Koleksi Lencana
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <button
+                onClick={() => {
+                  setCompletionDefaultTab("certificate");
+                  setShowCompletion(true);
+                }}
+                className="flex-1 sm:flex-initial px-5 py-2.5 bg-slate-950 hover:bg-slate-900 text-white rounded-2xl text-xs font-black shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>📜 Lihat & Cetak Sertifikat</span>
+              </button>
+              <button
+                onClick={() => {
+                  setCompletionDefaultTab("rapor");
+                  setShowCompletion(true);
+                }}
+                className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-900 rounded-2xl text-xs font-bold shadow-md cursor-pointer transition-all"
+              >
+                📊 Rapor 6 TP
+              </button>
+              <button
+                onClick={() => setShowBadges(true)}
+                className="px-3.5 py-2.5 bg-white/60 hover:bg-white/90 text-slate-900 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+                title="Koleksi Lencana"
+              >
+                🎖️
+              </button>
+            </div>
           </div>
         )}
       </main>
 
       {/* Modals */}
+      <CompletionCertificateModal
+        isOpen={showCompletion}
+        onClose={() => setShowCompletion(false)}
+        student={student}
+        defaultTab={completionDefaultTab}
+      />
       <BadgeModal
         isOpen={showBadges}
         onClose={() => setShowBadges(false)}

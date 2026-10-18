@@ -13,7 +13,11 @@ export async function GET(req: Request) {
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: {
-        session: true,
+        session: {
+          include: {
+            teacher: true,
+          },
+        },
         scores: true,
         badges: true,
       },
