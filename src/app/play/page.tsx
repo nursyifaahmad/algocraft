@@ -346,7 +346,7 @@ function PlayGameContent() {
     },
     6: {
       hint1: "Perhatikan operator perbandingan pada baris pengecekan saldo: apakah menggunakan > atau >=?",
-      hint2: "Baris ke-3 salah karena operator > menolak pembeli dengan saldo Rp25.000 untuk tagihan Rp25.000.",
+      hint2: "Baris ke-4 salah karena operator > menolak pembeli dengan saldo Rp25.000 untuk tagihan Rp25.000.",
     },
   };
 

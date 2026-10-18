@@ -370,33 +370,34 @@ export const DEBUG_SCENARIOS: DebugScenario[] = [
       status: "Berhasil",
     },
     buggyCode: [
-      "1: BACA total_harga, saldo_kartu",
-      "2: total_bayar = total_harga",
-      "3: JIKA saldo_kartu > total_bayar MAKA",
-      "4:   saldo_akhir = saldo_kartu - total_bayar",
-      "5:   TAMPILKAN 'Transaksi Berhasil'",
-      "6: SELAIN ITU",
-      "7:   TAMPILKAN 'Saldo Kurang!'",
-      "8: SELESAI",
+      "1: MULAI",
+      "2: BACA total_harga, saldo_kartu",
+      "3: total_bayar = total_harga",
+      "4: JIKA saldo_kartu > total_bayar MAKA",
+      "5:   saldo_akhir = saldo_kartu - total_bayar",
+      "6:   TAMPILKAN 'Transaksi Berhasil'",
+      "7: SELAIN ITU",
+      "8:   TAMPILKAN 'Saldo Kurang!'",
+      "9: SELESAI",
     ],
-    buggyLineIndex: 2, // Baris 3: JIKA saldo_kartu > total_bayar (seharusnya >=)
+    buggyLineIndex: 3, // Baris 4: JIKA saldo_kartu > total_bayar (seharusnya >=)
     optionsToFix: [
       {
         id: "fix-1a",
-        text: "Ganti baris 3 menjadi: JIKA saldo_kartu >= total_bayar MAKA",
+        text: "Ganti baris 4 menjadi: JIKA saldo_kartu >= total_bayar MAKA",
         isCorrect: true,
         explanation:
           "Tepat sekali! Operator '>' membuat saldo yang persis sama dengan total bayar (Rp25.000 == Rp25.000) dianggap tidak cukup. Seharusnya menggunakan '>='.",
       },
       {
         id: "fix-1b",
-        text: "Ganti baris 4 menjadi: saldo_akhir = total_bayar - saldo_kartu",
+        text: "Ganti baris 5 menjadi: saldo_akhir = total_bayar - saldo_kartu",
         isCorrect: false,
         explanation: "Salah. Perhitungan ini akan menghasilkan saldo akhir negatif.",
       },
       {
         id: "fix-1c",
-        text: "Ganti baris 3 menjadi: JIKA saldo_kartu == total_bayar MAKA",
+        text: "Ganti baris 4 menjadi: JIKA saldo_kartu == total_bayar MAKA",
         isCorrect: false,
         explanation: "Kurang tepat. Jika menggunakan '==', siswa yang memiliki saldo lebih banyak justru akan ditolak.",
       },
@@ -418,30 +419,31 @@ export const DEBUG_SCENARIOS: DebugScenario[] = [
       status: "Berhasil",
     },
     buggyCode: [
-      "1: BACA total_belanja",
-      "2: diskon = 0.15 * total_belanja",
-      "3: total_bayar = total_belanja + diskon",
-      "4: TAMPILKAN total_bayar",
-      "5: SELESAI",
+      "1: MULAI",
+      "2: BACA total_belanja",
+      "3: diskon = 0.15 * total_belanja",
+      "4: total_bayar = total_belanja + diskon",
+      "5: TAMPILKAN total_bayar",
+      "6: SELESAI",
     ],
-    buggyLineIndex: 2, // Baris 3: total_belanja + diskon
+    buggyLineIndex: 3, // Baris 4: total_belanja + diskon
     optionsToFix: [
       {
         id: "fix-2a",
-        text: "Ganti baris 3 menjadi: total_bayar = total_belanja - diskon",
+        text: "Ganti baris 4 menjadi: total_bayar = total_belanja - diskon",
         isCorrect: true,
         explanation:
           "Benar! Diskon adalah potongan harga sehingga harus mengurangi total belanja, bukan menambahnya.",
       },
       {
         id: "fix-2b",
-        text: "Ganti baris 2 menjadi: diskon = total_belanja / 0.15",
+        text: "Ganti baris 3 menjadi: diskon = total_belanja / 0.15",
         isCorrect: false,
         explanation: "Salah. Membagi dengan 0.15 justru akan menghasilkan angka diskon yang sangat besar.",
       },
       {
         id: "fix-2c",
-        text: "Ganti baris 4 menjadi: TAMPILKAN diskon",
+        text: "Ganti baris 5 menjadi: TAMPILKAN diskon",
         isCorrect: false,
         explanation: "Salah. Yang harus dibayar pelanggan adalah total setelah diskon.",
       },
