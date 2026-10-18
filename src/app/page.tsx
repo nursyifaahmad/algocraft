@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Target,
   Gamepad2,
-  GraduationCap,
   ArrowRight,
   CheckCircle,
   AlertCircle,
@@ -160,14 +159,6 @@ export default function LandingPage() {
             </span>
           </div>
         </div>
-
-        <button
-          onClick={() => router.push("/teacher/login")}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 transition-all cursor-pointer"
-        >
-          <GraduationCap className="w-4 h-4 text-indigo-400" />
-          <span>Portal Guru</span>
-        </button>
       </nav>
 
       {/* Hero & Fast Login Section */}
