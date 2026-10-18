@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FLOWCHART_ITEMS, FlowchartNodeData } from "@/data/storyData";
 import {
   CheckCircle2,
@@ -8,70 +8,30 @@ import {
   ArrowRight,
   RotateCcw,
   Sparkles,
-  Info,
+  Plus,
+  Trash2,
+  Share2,
+  Move,
+  FileQuestion,
+  X,
   HelpCircle,
-  Network,
 } from "lucide-react";
 
-interface SlotDefinition {
-  slotId: number; // 1 s/d 7
-  title: string;
-  expectedType: "terminator" | "io" | "process" | "decision";
-  expectedNodeId: string;
-  typeLabel: string;
+interface CanvasNode {
+  id: string;
+  itemId: string; // ID dari FLOWCHART_ITEMS
+  chosenType: "terminator" | "io" | "process" | "decision"; // Bentuk yang DIPILIH siswa
+  label: string;
+  x: number;
+  y: number;
 }
 
-const FLOWCHART_SLOTS: SlotDefinition[] = [
-  {
-    slotId: 1,
-    title: "Titik Awal Alur",
-    expectedType: "terminator",
-    expectedNodeId: "fc-start",
-    typeLabel: "Terminator (Oval)",
-  },
-  {
-    slotId: 2,
-    title: "Membaca Data Pembeli",
-    expectedType: "io",
-    expectedNodeId: "fc-input",
-    typeLabel: "Input/Output (Jajar Genjang)",
-  },
-  {
-    slotId: 3,
-    title: "Evaluasi Kondisi Saldo",
-    expectedType: "decision",
-    expectedNodeId: "fc-decision",
-    typeLabel: "Decision (Belah Ketupat)",
-  },
-  {
-    slotId: 4,
-    title: "Kalkulasi Sisa Saldo (Cabang YA)",
-    expectedType: "process",
-    expectedNodeId: "fc-process-yes",
-    typeLabel: "Proses (Persegi Panjang)",
-  },
-  {
-    slotId: 5,
-    title: "Cetak Bukti Berhasil (Cabang YA)",
-    expectedType: "io",
-    expectedNodeId: "fc-output-yes",
-    typeLabel: "Input/Output (Jajar Genjang)",
-  },
-  {
-    slotId: 6,
-    title: "Pemberitahuan Ditolak (Cabang TIDAK)",
-    expectedType: "io",
-    expectedNodeId: "fc-output-no",
-    typeLabel: "Input/Output (Jajar Genjang)",
-  },
-  {
-    slotId: 7,
-    title: "Titik Akhir Transaksi",
-    expectedType: "terminator",
-    expectedNodeId: "fc-end",
-    typeLabel: "Terminator (Oval)",
-  },
-];
+interface Connection {
+  id: string;
+  fromId: string;
+  toId: string;
+  label?: "YA" | "TIDAK";
+}
 
 interface Mission4Props {
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
@@ -79,541 +39,580 @@ interface Mission4Props {
 }
 
 export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrongAttempt }) => {
-  // Mapping: slotId -> FlowchartNodeData
-  const [slotAssignments, setSlotAssignments] = useState<Record<number, FlowchartNodeData>>({});
-  const [selectedItem, setSelectedItem] = useState<FlowchartNodeData | null>(null);
+  // Kanvas kertas kosong murni (tanpa kisi-kisi jawaban/slot pola)
+  const [nodes, setNodes] = useState<CanvasNode[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+
+  // Dialog pembuatan simbol baru
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedShapeTool, setSelectedShapeTool] = useState<
+    "terminator" | "io" | "process" | "decision" | null
+  >(null);
+  const [selectedTextId, setSelectedTextId] = useState<string>("");
+
+  // Interaksi node & koneksi
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [connectingSourceId, setConnectingSourceId] = useState<string | null>(null);
+  const [branchChoice, setBranchChoice] = useState<"YA" | "TIDAK" | null>(null);
+
+  // Status drag & drop
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Hasil asesmen
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{
-    correctSlots: number;
-    correctSymbols: number;
+    correctSymbolsCount: number;
+    validConnectionsCount: number;
     rubricScore: number;
     percentage: number;
     isPass: boolean;
-    feedback: string;
+    errors: string[];
   } | null>(null);
 
-  // Daftar item yang sudah terpasang di slot
-  const assignedItemIds = new Set(Object.values(slotAssignments).map((i) => i.id));
-  const unassignedItems = FLOWCHART_ITEMS.filter((item) => !assignedItemIds.has(item.id));
+  const canvasRef = useRef<HTMLDivElement>(null);
 
-  const handleSelectPalette = (item: FlowchartNodeData) => {
+  // Daftar teks yang belum dimasukkan ke kanvas
+  const usedItemIds = new Set(nodes.map((n) => n.itemId));
+  const availableTexts = FLOWCHART_ITEMS.filter((item) => !usedItemIds.has(item.id));
+
+  // 1. Tambah simbol baru ke kanvas kertas kosong
+  const handleCreateNode = () => {
+    if (!selectedShapeTool || !selectedTextId) return;
+
+    const targetItem = FLOWCHART_ITEMS.find((it) => it.id === selectedTextId);
+    if (!targetItem) return;
+
+    // Tentukan posisi awal di tengah kanvas
+    const canvasBounds = canvasRef.current?.getBoundingClientRect();
+    const spawnX = canvasBounds ? Math.min(300, canvasBounds.width / 2 - 90) : 180;
+    const spawnY = 40 + (nodes.length % 5) * 80;
+
+    const newNode: CanvasNode = {
+      id: `node-${Date.now()}`,
+      itemId: targetItem.id,
+      chosenType: selectedShapeTool, // Bentuk yang dipilih oleh nalar murid sendiri
+      label: targetItem.label,
+      x: spawnX,
+      y: spawnY,
+    };
+
+    setNodes((prev) => [...prev, newNode]);
+    setShowAddModal(false);
+    setSelectedShapeTool(null);
+    setSelectedTextId("");
+    setSelectedNodeId(newNode.id);
+  };
+
+  // 2. Hubungkan dua simbol dengan garis alur panah
+  const handleNodeClick = (nodeId: string) => {
     if (submitted) return;
-    if (selectedItem?.id === item.id) {
-      setSelectedItem(null);
+
+    if (connectingSourceId) {
+      if (connectingSourceId === nodeId) {
+        setConnectingSourceId(null);
+        setBranchChoice(null);
+        return;
+      }
+
+      // Buat koneksi baru
+      const newConn: Connection = {
+        id: `conn-${Date.now()}`,
+        fromId: connectingSourceId,
+        toId: nodeId,
+        label: branchChoice || undefined,
+      };
+
+      setConnections((prev) => [...prev, newConn]);
+      setConnectingSourceId(null);
+      setBranchChoice(null);
     } else {
-      setSelectedItem(item);
+      setSelectedNodeId(nodeId);
     }
   };
 
-  const handleSlotClick = (slotId: number) => {
-    if (submitted) return;
-
-    if (selectedItem) {
-      // Pasang item terpilih ke slot ini
-      setSlotAssignments((prev) => ({
-        ...prev,
-        [slotId]: selectedItem,
-      }));
-      setSelectedItem(null);
-    } else if (slotAssignments[slotId]) {
-      // Jika slot sudah ada isinya dan tidak ada item yang dipilih, lepas kembali ke palet
-      setSlotAssignments((prev) => {
-        const copy = { ...prev };
-        delete copy[slotId];
-        return copy;
-      });
+  const handleStartConnect = (nodeId: string) => {
+    const sourceNode = nodes.find((n) => n.id === nodeId);
+    if (sourceNode?.chosenType === "decision") {
+      // Jika dari Decision, tanyakan cabang YA atau TIDAK
+      const existingBranch = connections.filter((c) => c.fromId === nodeId);
+      if (existingBranch.some((c) => c.label === "YA")) {
+        setBranchChoice("TIDAK");
+      } else {
+        setBranchChoice("YA");
+      }
+    } else {
+      setBranchChoice(null);
     }
+    setConnectingSourceId(nodeId);
+  };
+
+  // 3. Dragging node di atas kertas kosong
+  const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    if (submitted || connectingSourceId) return;
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node || !canvasRef.current) return;
+
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    setDraggingNodeId(nodeId);
+    setDragOffset({
+      x: e.clientX - canvasRect.left - node.x,
+      y: e.clientY - canvasRect.top - node.y,
+    });
+    setSelectedNodeId(nodeId);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!draggingNodeId || !canvasRef.current) return;
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+
+    const newX = Math.max(10, Math.min(canvasRect.width - 200, e.clientX - canvasRect.left - dragOffset.x));
+    const newY = Math.max(10, Math.min(canvasRect.height - 70, e.clientY - canvasRect.top - dragOffset.y));
+
+    setNodes((prev) =>
+      prev.map((n) => (n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n))
+    );
+  };
+
+  const handleMouseUp = () => {
+    setDraggingNodeId(null);
+  };
+
+  // Touch Events untuk Layar HP Android/iOS
+  const handleTouchStart = (e: React.TouchEvent, nodeId: string) => {
+    if (submitted || connectingSourceId) return;
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node || !canvasRef.current || e.touches.length === 0) return;
+
+    const touch = e.touches[0];
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    setDraggingNodeId(nodeId);
+    setDragOffset({
+      x: touch.clientX - canvasRect.left - node.x,
+      y: touch.clientY - canvasRect.top - node.y,
+    });
+    setSelectedNodeId(nodeId);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!draggingNodeId || !canvasRef.current || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+
+    const newX = Math.max(10, Math.min(canvasRect.width - 200, touch.clientX - canvasRect.left - dragOffset.x));
+    const newY = Math.max(10, Math.min(canvasRect.height - 70, touch.clientY - canvasRect.top - dragOffset.y));
+
+    setNodes((prev) =>
+      prev.map((n) => (n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n))
+    );
+  };
+
+  const handleDeleteNode = (nodeId: string) => {
+    setNodes((prev) => prev.filter((n) => n.id !== nodeId));
+    setConnections((prev) =>
+      prev.filter((c) => c.fromId !== nodeId && c.toId !== nodeId)
+    );
+    setSelectedNodeId(null);
+    setConnectingSourceId(null);
   };
 
   const handleReset = () => {
-    setSlotAssignments({});
-    setSelectedItem(null);
+    setNodes([]);
+    setConnections([]);
+    setSelectedNodeId(null);
+    setConnectingSourceId(null);
     setSubmitted(false);
     setResult(null);
   };
 
+  // 4. Validasi Autentik Flowchart
   const handleSubmit = () => {
-    let correctSlots = 0;
-    let correctSymbols = 0;
-    const totalSlots = FLOWCHART_SLOTS.length; // 7
+    const errors: string[] = [];
+    let correctSymbolsCount = 0;
 
-    FLOWCHART_SLOTS.forEach((slot) => {
-      const assigned = slotAssignments[slot.slotId];
-      if (assigned) {
-        // Cek simbol geometri sesuai standar
-        if (assigned.type === slot.expectedType) {
-          correctSymbols += 1;
-        }
-        // Cek posisi alur logika yang tepat
-        if (assigned.id === slot.expectedNodeId) {
-          correctSlots += 1;
+    // Evaluasi 1: Apakah siswa memilih bentuk simbol yang benar untuk setiap instruksi?
+    FLOWCHART_ITEMS.forEach((originalItem) => {
+      const placed = nodes.find((n) => n.itemId === originalItem.id);
+      if (!placed) {
+        errors.push(`Instruksi "${originalItem.label}" belum dimasukkan ke kanvas.`);
+      } else {
+        if (placed.chosenType === originalItem.type) {
+          correctSymbolsCount += 1;
+        } else {
+          const typeName =
+            originalItem.type === "terminator"
+              ? "Terminator (Oval)"
+              : originalItem.type === "io"
+              ? "Input/Output (Jajar Genjang)"
+              : originalItem.type === "process"
+              ? "Proses (Persegi Panjang)"
+              : "Decision (Belah Ketupat)";
+          errors.push(
+            `Simbol untuk "${originalItem.label}" salah bentuk. Seharusnya menggunakan ${typeName}.`
+          );
         }
       }
     });
 
-    let rubricScore = 1;
-    let feedback = "";
+    // Evaluasi 2: Apakah koneksi alurnya sudah mengalir dari Mulai ke Selesai dengan cabang percabangan?
+    let validConnectionsCount = 0;
+    const startNode = nodes.find((n) => n.itemId === "fc-start");
+    const endNode = nodes.find((n) => n.itemId === "fc-end");
+    const decisionNode = nodes.find((n) => n.itemId === "fc-decision");
 
-    if (correctSlots === totalSlots) {
-      rubricScore = 4;
-      feedback = "Sempurna! Semua simbol geometris dan alur percabangan flowchart tersusun 100% akurat.";
-    } else if (correctSlots >= 5 && correctSymbols >= 6) {
-      rubricScore = 3;
-      feedback = "Sangat Baik! Simbol dan alur diagram alir sesuai dengan kaidah algoritma (Tuntas).";
-    } else if (correctSymbols >= 4) {
-      rubricScore = 2;
-      feedback = "Cukup, namun terdapat penempatan alur cabang atau simbol standar yang tertukar.";
-    } else {
-      rubricScore = 1;
-      feedback = "Bagan alir belum sesuai aturan standar simbol diagram alir.";
+    // Cek koneksi dari start
+    if (startNode && connections.some((c) => c.fromId === startNode.id)) {
+      validConnectionsCount += 1;
+    }
+    // Cek koneksi ke end
+    if (endNode && connections.some((c) => c.toId === endNode.id)) {
+      validConnectionsCount += 1;
+    }
+    // Cek cabang Decision YA & TIDAK
+    if (decisionNode) {
+      const hasYa = connections.some((c) => c.fromId === decisionNode.id && c.label === "YA");
+      const hasTidak = connections.some((c) => c.fromId === decisionNode.id && c.label === "TIDAK");
+      if (hasYa) validConnectionsCount += 1;
+      else errors.push("Cabang [YA] dari simbol Decision (Belah Ketupat) belum dihubungkan.");
+      if (hasTidak) validConnectionsCount += 1;
+      else errors.push("Cabang [TIDAK] dari simbol Decision (Belah Ketupat) belum dihubungkan.");
     }
 
-    const percentage = Math.round((correctSlots / totalSlots) * 100);
-    const isPass = rubricScore >= 3; // Kriteria TP 4: minimal skor 3 dari 4
+    const totalExpectedSymbols = FLOWCHART_ITEMS.length; // 7
+
+    // Rubrik Skala 4 Asesmen PPG
+    let rubricScore = 1;
+    if (correctSymbolsCount === totalExpectedSymbols && validConnectionsCount >= 4 && errors.length === 0) {
+      rubricScore = 4;
+    } else if (correctSymbolsCount >= 5 && validConnectionsCount >= 3) {
+      rubricScore = 3;
+    } else if (correctSymbolsCount >= 4) {
+      rubricScore = 2;
+    } else {
+      rubricScore = 1;
+    }
+
+    const percentage = Math.round((correctSymbolsCount / totalExpectedSymbols) * 100);
+    const isPass = rubricScore >= 3;
 
     setResult({
-      correctSlots,
-      correctSymbols,
+      correctSymbolsCount,
+      validConnectionsCount,
       rubricScore,
       percentage,
       isPass,
-      feedback,
+      errors,
     });
     setSubmitted(true);
 
     if (isPass) {
-      onSuccess(percentage, rubricScore, slotAssignments);
+      onSuccess(percentage, rubricScore, { nodes, connections });
     } else {
       onWrongAttempt();
     }
   };
 
-  // Render bentuk geometris simbol standar
-  const renderFlowchartShape = (
-    type: "terminator" | "io" | "process" | "decision",
-    label: string,
-    isGhost: boolean = false,
-    isWrong: boolean = false,
-    isRight: boolean = false
-  ) => {
-    // 1. TERMINATOR (OVAL / KAPSUL)
-    if (type === "terminator") {
-      return (
-        <div className="relative w-full max-w-[240px] h-[52px] flex items-center justify-center mx-auto transition-transform">
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 240 52" preserveAspectRatio="none">
-            <rect
-              x="3"
-              y="3"
-              width="234"
-              height="46"
-              rx="23"
-              ry="23"
-              fill={isGhost ? "#f8fafc" : isWrong ? "#fee2e2" : isRight ? "#d1fae5" : "#ecfdf5"}
-              stroke={isGhost ? "#cbd5e1" : isWrong ? "#ef4444" : isRight ? "#059669" : "#10b981"}
-              strokeWidth={isGhost ? "2" : "2.5"}
-              strokeDasharray={isGhost ? "5,5" : undefined}
-            />
-          </svg>
-          <span
-            className={`relative z-10 px-4 text-center font-bold text-xs ${
-              isGhost ? "text-slate-400 italic font-normal" : isWrong ? "text-rose-900" : "text-emerald-950"
-            }`}
-          >
-            {label}
-          </span>
-        </div>
-      );
-    }
-
-    // 2. INPUT / OUTPUT (JAJAR GENJANG / PARALLELOGRAM MIRING)
-    if (type === "io") {
-      return (
-        <div className="relative w-full max-w-[280px] h-[58px] flex items-center justify-center mx-auto transition-transform">
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 280 58" preserveAspectRatio="none">
-            {/* Sudut miring jajar genjang sejati: (24,3) ke (277,3) ke (256,55) ke (3,55) */}
-            <polygon
-              points="24,3 277,3 256,55 3,55"
-              fill={isGhost ? "#f8fafc" : isWrong ? "#fee2e2" : isRight ? "#d1fae5" : "#f0f9ff"}
-              stroke={isGhost ? "#cbd5e1" : isWrong ? "#ef4444" : isRight ? "#059669" : "#0ea5e9"}
-              strokeWidth={isGhost ? "2" : "2.5"}
-              strokeDasharray={isGhost ? "5,5" : undefined}
-            />
-          </svg>
-          <span
-            className={`relative z-10 px-8 text-center font-semibold text-xs leading-tight ${
-              isGhost ? "text-slate-400 italic font-normal" : isWrong ? "text-rose-900" : "text-sky-950"
-            }`}
-          >
-            {label}
-          </span>
-        </div>
-      );
-    }
-
-    // 3. PROSES (PERSEGI PANJANG SIKU-SIKU MURNI)
-    if (type === "process") {
-      return (
-        <div className="relative w-full max-w-[280px] h-[58px] flex items-center justify-center mx-auto transition-transform">
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 280 58" preserveAspectRatio="none">
-            <rect
-              x="3"
-              y="3"
-              width="274"
-              height="52"
-              rx="0"
-              ry="0"
-              fill={isGhost ? "#f8fafc" : isWrong ? "#fee2e2" : isRight ? "#d1fae5" : "#eef2ff"}
-              stroke={isGhost ? "#cbd5e1" : isWrong ? "#ef4444" : isRight ? "#059669" : "#6366f1"}
-              strokeWidth={isGhost ? "2" : "2.5"}
-              strokeDasharray={isGhost ? "5,5" : undefined}
-            />
-          </svg>
-          <span
-            className={`relative z-10 px-4 text-center font-semibold text-xs leading-tight font-mono ${
-              isGhost ? "text-slate-400 italic font-normal" : isWrong ? "text-rose-900" : "text-indigo-950"
-            }`}
-          >
-            {label}
-          </span>
-        </div>
-      );
-    }
-
-    // 4. DECISION (BELAH KETUPAT / DIAMOND / RHOMBUS SIMETRIS)
-    if (type === "decision") {
-      return (
-        <div className="relative w-full max-w-[290px] h-[90px] flex items-center justify-center mx-auto transition-transform">
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 290 90" preserveAspectRatio="none">
-            {/* Sudut belah ketupat sejati: Top(145,3), Right(287,45), Bottom(145,87), Left(3,45) */}
-            <polygon
-              points="145,3 287,45 145,87 3,45"
-              fill={isGhost ? "#f8fafc" : isWrong ? "#fee2e2" : isRight ? "#d1fae5" : "#fffbeb"}
-              stroke={isGhost ? "#cbd5e1" : isWrong ? "#ef4444" : isRight ? "#059669" : "#f59e0b"}
-              strokeWidth={isGhost ? "2" : "2.5"}
-              strokeDasharray={isGhost ? "5,5" : undefined}
-            />
-          </svg>
-          <span
-            className={`relative z-10 px-10 text-center font-bold text-xs leading-tight ${
-              isGhost ? "text-slate-400 italic font-normal" : isWrong ? "text-rose-900" : "text-amber-950"
-            }`}
-          >
-            {label}
-          </span>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Pengantar Masalah & Pedoman Standar Simbol */}
+    <div className="space-y-5">
+      {/* Pengantar Masalah (PBL) */}
       <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent p-5 rounded-2xl border border-amber-200/80">
         <div className="flex items-center gap-2 text-amber-800 font-bold text-sm mb-1">
-          <Network className="w-4 h-4 text-amber-600" />
-          <span>Misi 4: Representasi Diagram Alir Standar (Flowchart Percabangan)</span>
+          <Sparkles className="w-4 h-4 text-amber-600" />
+          <span>Misi 4: Desain Diagram Alir Mandiri (Kertas Gambar Kosong)</span>
         </div>
         <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-          Dalam ilmu komputer, diagram alir wajib menggunakan simbol geometri standar (ANSI/ISO).
-          Pilihlah simbol yang tepat dari palet, lalu tempatkan ke dalam bagan alur bercabang
-          <strong> Kantin Digital</strong> di bawah!
+          Rancanglah diagram alir algoritma kasir kantin di atas <strong>kertas kosong</strong>. Pilih
+          bentuk simbol yang sesuai kaidah ilmu komputer untuk setiap instruksi, atur posisinya secara
+          bebas, dan hubungkan garis alurnya beserta percabangan <strong>YA / TIDAK</strong>.
         </p>
-
-        {/* Legenda Kaidah Simbol Standar */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-amber-200/60 text-[11px]">
-          <div className="flex items-center gap-1.5 font-semibold text-emerald-800">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 flex-shrink-0" />
-            <span>Oval = Terminator (Mulai/Selesai)</span>
-          </div>
-          <div className="flex items-center gap-1.5 font-semibold text-sky-800">
-            <span className="w-3 h-3 skew-x-[-12deg] bg-sky-400 border border-sky-600 flex-shrink-0" />
-            <span>Jajar Genjang = Input / Output</span>
-          </div>
-          <div className="flex items-center gap-1.5 font-semibold text-indigo-800">
-            <span className="w-3 h-2.5 bg-indigo-500 border border-indigo-600 flex-shrink-0" />
-            <span>Persegi Panjang = Proses Hitung</span>
-          </div>
-          <div className="flex items-center gap-1.5 font-semibold text-amber-800">
-            <span className="w-2.5 h-2.5 rotate-45 bg-amber-400 border border-amber-600 flex-shrink-0" />
-            <span>Belah Ketupat = Keputusan (IF)</span>
-          </div>
+        <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md font-bold">
+            Target Ketuntasan: Minimal Skor 3 dari Skala 4
+          </span>
+          <span>• Tidak ada kisi/pola bantuan. Uji pemahaman simbolik Anda secara murni!</span>
         </div>
       </div>
 
-      {/* Palet Simbol yang Belum Terpasang */}
-      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-          <span className="uppercase tracking-wide">
-            Palet Simbol Geometris Tersedia ({unassignedItems.length}):
+      {/* Toolbar Kertas Gambar (Alat Simbol) */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold text-slate-700 mr-1">Alat Gambar Simbol:</span>
+
+          <button
+            disabled={submitted || availableTexts.length === 0}
+            onClick={() => {
+              setSelectedShapeTool("terminator");
+              setShowAddModal(true);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40"
+          >
+            <span className="w-3.5 h-2.5 rounded-full bg-emerald-500 border border-emerald-600 inline-block" />
+            <span>+ Terminator</span>
+          </button>
+
+          <button
+            disabled={submitted || availableTexts.length === 0}
+            onClick={() => {
+              setSelectedShapeTool("io");
+              setShowAddModal(true);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40"
+          >
+            <span className="w-3.5 h-2.5 skew-x-[-12deg] bg-sky-500 border border-sky-600 inline-block" />
+            <span>+ Input / Output</span>
+          </button>
+
+          <button
+            disabled={submitted || availableTexts.length === 0}
+            onClick={() => {
+              setSelectedShapeTool("process");
+              setShowAddModal(true);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40"
+          >
+            <span className="w-3.5 h-2.5 bg-indigo-500 border border-indigo-600 inline-block" />
+            <span>+ Proses</span>
+          </button>
+
+          <button
+            disabled={submitted || availableTexts.length === 0}
+            onClick={() => {
+              setSelectedShapeTool("decision");
+              setShowAddModal(true);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40"
+          >
+            <span className="w-2.5 h-2.5 rotate-45 bg-amber-500 border border-amber-600 inline-block" />
+            <span>+ Decision (IF)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-slate-500">
+            Simbol di Kertas: <strong>{nodes.length}</strong>/7 | Garis:{" "}
+            <strong>{connections.length}</strong>
           </span>
-          {selectedItem && (
-            <span className="text-xs text-indigo-600 font-bold animate-pulse">
-              👉 Ketuk slot tujuan pada bagan alir di bawah!
-            </span>
+          {nodes.length > 0 && !submitted && (
+            <button
+              onClick={handleReset}
+              className="text-xs text-rose-600 hover:text-rose-700 font-bold px-2 py-1 rounded-lg hover:bg-rose-50 cursor-pointer"
+            >
+              Bersihkan Kertas
+            </button>
           )}
         </div>
+      </div>
 
-        {unassignedItems.length === 0 && !submitted ? (
-          <p className="text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 font-semibold text-center">
-            Semua simbol telah ditempatkan! Silakan periksa kembali dan klik &quot;Validasi Diagram Alir&quot;.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-            {unassignedItems.map((item) => {
-              const isSelected = selectedItem?.id === item.id;
-              return (
-                <button
-                  key={item.id}
-                  disabled={submitted}
-                  onClick={() => handleSelectPalette(item)}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? "bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-300 shadow-md scale-102"
-                      : "bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:shadow-xs"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 mb-1.5">
-                    <span
-                      className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-md font-bold ${
-                        isSelected
-                          ? "bg-white/20 text-white"
-                          : item.type === "terminator"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : item.type === "decision"
-                          ? "bg-amber-100 text-amber-800"
-                          : item.type === "io"
-                          ? "bg-sky-100 text-sky-800"
-                          : "bg-indigo-100 text-indigo-800"
-                      }`}
-                    >
-                      {item.type === "terminator"
-                        ? "Oval / Terminator"
-                        : item.type === "decision"
-                        ? "Belah Ketupat / Decision"
-                        : item.type === "io"
-                        ? "Jajar Genjang / I-O"
-                        : "Persegi Panjang / Proses"}
-                    </span>
-                  </div>
-                  <p className="text-xs font-semibold leading-tight">{item.label}</p>
-                </button>
-              );
-            })}
+      {/* Kanvas Kertas Kotak-Kotak Kosong (Millimeter Graph Paper) */}
+      <div
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleMouseUp}
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+        className="relative w-full h-[620px] bg-white border-2 border-slate-300 rounded-3xl overflow-hidden shadow-inner select-none"
+      >
+        {/* Pesan Kertas Kosong jika belum ada simbol */}
+        {nodes.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-3">
+              <FileQuestion className="w-8 h-8" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Kertas Diagram Alir Kosong</h3>
+            <p className="text-xs text-slate-400 max-w-sm mt-1">
+              Gunakan tombol di atas untuk memilih bentuk simbol (Terminator, I/O, Proses, Decision)
+              dan masukkan teks instruksi algoritma kantin ke dalamnya.
+            </p>
           </div>
         )}
+
+        {/* Petunjuk saat Menarik Garis Panah */}
+        {connectingSourceId && (
+          <div className="absolute top-4 left-4 z-20 bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded-2xl shadow-lg animate-bounce flex items-center gap-2">
+            <Share2 className="w-4 h-4" />
+            <span>
+              Ketuk simbol tujuan untuk menghubungkan garis alur
+              {branchChoice ? ` (Cabang ${branchChoice})` : ""}
+            </span>
+            <button
+              onClick={() => {
+                setConnectingSourceId(null);
+                setBranchChoice(null);
+              }}
+              className="ml-2 hover:bg-amber-600 p-0.5 rounded"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* SVG Render Garis Panah Antar Simbol */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+          <defs>
+            <marker
+              id="arrowhead-flow"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 8 3, 0 6" fill="#334155" />
+            </marker>
+          </defs>
+
+          {connections.map((conn) => {
+            const fromNode = nodes.find((n) => n.id === conn.fromId);
+            const toNode = nodes.find((n) => n.id === conn.toId);
+            if (!fromNode || !toNode) return null;
+
+            // Titik tengah node
+            const fromCenterX = fromNode.x + 95;
+            const fromCenterY = fromNode.y + (fromNode.chosenType === "decision" ? 40 : 26);
+            const toCenterX = toNode.x + 95;
+            const toCenterY = toNode.y + (toNode.chosenType === "decision" ? 40 : 26);
+
+            // Garis lurus / kurva
+            const midX = (fromCenterX + toCenterX) / 2;
+            const midY = (fromCenterY + toCenterY) / 2;
+
+            return (
+              <g key={conn.id}>
+                <line
+                  x1={fromCenterX}
+                  y1={fromCenterY}
+                  x2={toCenterX}
+                  y2={toCenterY}
+                  stroke="#334155"
+                  strokeWidth="2.5"
+                  markerEnd="url(#arrowhead-flow)"
+                />
+                {conn.label && (
+                  <text
+                    x={midX}
+                    y={midY - 6}
+                    fill={conn.label === "YA" ? "#059669" : "#dc2626"}
+                    fontSize="11"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    className="bg-white"
+                  >
+                    [{conn.label}]
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Render Simbol-Simbol Bebas di Kertas */}
+        {nodes.map((node) => {
+          const isSelected = selectedNodeId === node.id;
+          const isSource = connectingSourceId === node.id;
+
+          return (
+            <div
+              key={node.id}
+              style={{
+                left: `${node.x}px`,
+                top: `${node.y}px`,
+                position: "absolute",
+              }}
+              onMouseDown={(e) => handleMouseDown(e, node.id)}
+              onTouchStart={(e) => handleTouchStart(e, node.id)}
+              onClick={() => handleNodeClick(node.id)}
+              className={`cursor-grab active:cursor-grabbing z-10 transition-shadow ${
+                isSource ? "ring-4 ring-amber-400 ring-offset-2" : isSelected ? "ring-2 ring-indigo-500" : ""
+              }`}
+            >
+              {/* 1. TERMINATOR (OVAL) */}
+              {node.chosenType === "terminator" && (
+                <div className="relative w-[190px] h-[48px] flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 190 48" preserveAspectRatio="none">
+                    <rect x="2" y="2" width="186" height="44" rx="22" ry="22" fill="#ecfdf5" stroke="#059669" strokeWidth="2.5" />
+                  </svg>
+                  <span className="relative z-10 px-4 text-center font-bold text-xs text-emerald-950">
+                    {node.label}
+                  </span>
+                </div>
+              )}
+
+              {/* 2. INPUT / OUTPUT (JAJAR GENJANG MIRING) */}
+              {node.chosenType === "io" && (
+                <div className="relative w-[210px] h-[52px] flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 210 52" preserveAspectRatio="none">
+                    <polygon points="18,2 208,2 192,50 2,50" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2.5" />
+                  </svg>
+                  <span className="relative z-10 px-6 text-center font-semibold text-[11px] leading-tight text-sky-950">
+                    {node.label}
+                  </span>
+                </div>
+              )}
+
+              {/* 3. PROSES (PERSEGI PANJANG SIKU-SIKU) */}
+              {node.chosenType === "process" && (
+                <div className="relative w-[210px] h-[52px] flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 210 52" preserveAspectRatio="none">
+                    <rect x="2" y="2" width="206" height="48" rx="0" ry="0" fill="#eef2ff" stroke="#4f46e5" strokeWidth="2.5" />
+                  </svg>
+                  <span className="relative z-10 px-3 text-center font-mono font-semibold text-[11px] leading-tight text-indigo-950">
+                    {node.label}
+                  </span>
+                </div>
+              )}
+
+              {/* 4. DECISION (BELAH KETUPAT / DIAMOND) */}
+              {node.chosenType === "decision" && (
+                <div className="relative w-[210px] h-[80px] flex items-center justify-center">
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 210 80" preserveAspectRatio="none">
+                    <polygon points="105,2 208,40 105,78 2,40" fill="#fffbeb" stroke="#d97706" strokeWidth="2.5" />
+                  </svg>
+                  <span className="relative z-10 px-8 text-center font-bold text-[11px] leading-tight text-amber-950">
+                    {node.label}
+                  </span>
+                </div>
+              )}
+
+              {/* Floating Action Menu untuk node yang sedang dipilih */}
+              {isSelected && !submitted && (
+                <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white rounded-xl px-2 py-1 flex items-center gap-1.5 shadow-lg text-[10px] z-30">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartConnect(node.id);
+                    }}
+                    className="flex items-center gap-1 hover:text-amber-400 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                  >
+                    <Share2 className="w-3 h-3" />
+                    <span>Tarik Panah ➔</span>
+                  </button>
+                  <span className="text-slate-600">|</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNode(node.id);
+                    }}
+                    className="hover:text-rose-400 p-0.5 rounded cursor-pointer"
+                    title="Hapus"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Kanvas Diagram Alir Terstruktur & Bercabang */}
-      <div className="bg-slate-900/5 border-2 border-slate-200 rounded-3xl p-4 sm:p-8 shadow-inner overflow-x-auto">
-        <div className="min-w-[620px] max-w-2xl mx-auto flex flex-col items-center space-y-4">
-          {/* SLOT 1: MULAI (Oval) */}
-          <div className="w-full flex flex-col items-center">
-            <div
-              onClick={() => handleSlotClick(1)}
-              className={`cursor-pointer transition-all ${
-                selectedItem ? "hover:scale-105" : ""
-              }`}
-            >
-              {slotAssignments[1] ? (
-                renderFlowchartShape(
-                  slotAssignments[1].type,
-                  slotAssignments[1].label,
-                  false,
-                  submitted && slotAssignments[1].id !== "fc-start",
-                  submitted && slotAssignments[1].id === "fc-start"
-                )
-              ) : (
-                renderFlowchartShape("terminator", "Slot 1: [Ketuk untuk pasang MULAI]", true)
-              )}
-            </div>
-
-            {/* Panah ke Bawah */}
-            <div className="flex flex-col items-center my-1 text-slate-500">
-              <div className="w-0.5 h-6 bg-slate-500" />
-              <div className="w-0 h-0 border-x-4 border-x-transparent border-t-6 border-t-slate-500" />
-            </div>
-          </div>
-
-          {/* SLOT 2: INPUT PESANAN (Jajar Genjang) */}
-          <div className="w-full flex flex-col items-center">
-            <div
-              onClick={() => handleSlotClick(2)}
-              className={`cursor-pointer transition-all ${
-                selectedItem ? "hover:scale-105" : ""
-              }`}
-            >
-              {slotAssignments[2] ? (
-                renderFlowchartShape(
-                  slotAssignments[2].type,
-                  slotAssignments[2].label,
-                  false,
-                  submitted && slotAssignments[2].id !== "fc-input",
-                  submitted && slotAssignments[2].id === "fc-input"
-                )
-              ) : (
-                renderFlowchartShape("io", "Slot 2: [Ketuk untuk pasang INPUT]", true)
-              )}
-            </div>
-
-            {/* Panah ke Bawah */}
-            <div className="flex flex-col items-center my-1 text-slate-500">
-              <div className="w-0.5 h-6 bg-slate-500" />
-              <div className="w-0 h-0 border-x-4 border-x-transparent border-t-6 border-t-slate-500" />
-            </div>
-          </div>
-
-          {/* SLOT 3: DECISION (Belah Ketupat / Diamond) */}
-          <div className="w-full flex flex-col items-center relative">
-            <div
-              onClick={() => handleSlotClick(3)}
-              className={`cursor-pointer transition-all ${
-                selectedItem ? "hover:scale-105" : ""
-              }`}
-            >
-              {slotAssignments[3] ? (
-                renderFlowchartShape(
-                  slotAssignments[3].type,
-                  slotAssignments[3].label,
-                  false,
-                  submitted && slotAssignments[3].id !== "fc-decision",
-                  submitted && slotAssignments[3].id === "fc-decision"
-                )
-              ) : (
-                renderFlowchartShape("decision", "Slot 3: [Ketuk untuk pasang DECISION]", true)
-              )}
-            </div>
-          </div>
-
-          {/* AREA PERCABANGAN: CABANG YA (Kiri) & CABANG TIDAK (Kanan) */}
-          <div className="w-full grid grid-cols-2 gap-8 pt-2">
-            {/* CABANG KIRI: YA (TRUE) */}
-            <div className="flex flex-col items-center space-y-4 border-r border-slate-300/80 pr-4">
-              {/* Panah Keluar Cabang YA */}
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] font-black px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
-                  YA (Saldo Cukup)
-                </span>
-                <div className="w-0.5 h-6 bg-emerald-600 mt-1" />
-                <div className="w-0 h-0 border-x-4 border-x-transparent border-t-6 border-t-emerald-600" />
-              </div>
-
-              {/* SLOT 4: PROSES HITUNG SISA SALDO (Persegi Panjang) */}
-              <div
-                onClick={() => handleSlotClick(4)}
-                className={`w-full cursor-pointer transition-all ${
-                  selectedItem ? "hover:scale-105" : ""
-                }`}
-              >
-                {slotAssignments[4] ? (
-                  renderFlowchartShape(
-                    slotAssignments[4].type,
-                    slotAssignments[4].label,
-                    false,
-                    submitted && slotAssignments[4].id !== "fc-process-yes",
-                    submitted && slotAssignments[4].id === "fc-process-yes"
-                  )
-                ) : (
-                  renderFlowchartShape("process", "Slot 4: [PROSES sisa_saldo]", true)
-                )}
-              </div>
-
-              {/* Panah ke Bawah */}
-              <div className="flex flex-col items-center my-0.5 text-slate-500">
-                <div className="w-0.5 h-6 bg-slate-500" />
-                <div className="w-0 h-0 border-x-4 border-x-transparent border-t-6 border-t-slate-500" />
-              </div>
-
-              {/* SLOT 5: OUTPUT TRANSAKSI BERHASIL (Jajar Genjang) */}
-              <div
-                onClick={() => handleSlotClick(5)}
-                className={`w-full cursor-pointer transition-all ${
-                  selectedItem ? "hover:scale-105" : ""
-                }`}
-              >
-                {slotAssignments[5] ? (
-                  renderFlowchartShape(
-                    slotAssignments[5].type,
-                    slotAssignments[5].label,
-                    false,
-                    submitted && slotAssignments[5].id !== "fc-output-yes",
-                    submitted && slotAssignments[5].id === "fc-output-yes"
-                  )
-                ) : (
-                  renderFlowchartShape("io", "Slot 5: [OUTPUT Berhasil]", true)
-                )}
-              </div>
-            </div>
-
-            {/* CABANG KANAN: TIDAK (FALSE) */}
-            <div className="flex flex-col items-center justify-start space-y-4 pl-4">
-              {/* Panah Keluar Cabang TIDAK */}
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] font-black px-2.5 py-0.5 bg-rose-100 text-rose-800 rounded-full border border-rose-300">
-                  TIDAK (Saldo Kurang)
-                </span>
-                <div className="w-0.5 h-6 bg-rose-600 mt-1" />
-                <div className="w-0 h-0 border-x-4 border-x-transparent border-t-6 border-t-rose-600" />
-              </div>
-
-              {/* SLOT 6: OUTPUT SALDO KURANG (Jajar Genjang) */}
-              <div
-                onClick={() => handleSlotClick(6)}
-                className={`w-full cursor-pointer transition-all ${
-                  selectedItem ? "hover:scale-105" : ""
-                }`}
-              >
-                {slotAssignments[6] ? (
-                  renderFlowchartShape(
-                    slotAssignments[6].type,
-                    slotAssignments[6].label,
-                    false,
-                    submitted && slotAssignments[6].id !== "fc-output-no",
-                    submitted && slotAssignments[6].id === "fc-output-no"
-                  )
-                ) : (
-                  renderFlowchartShape("io", "Slot 6: [OUTPUT Saldo Kurang]", true)
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* GARIS PENGHUBUNG MENYATU KE SELESAI */}
-          <div className="w-full flex flex-col items-center pt-2">
-            <div className="w-1/2 h-4 border-b-2 border-x-2 border-slate-400 rounded-b-xl" />
-            <div className="w-0.5 h-6 bg-slate-500" />
-            <div className="w-0 h-0 border-x-4 border-x-transparent border-t-6 border-t-slate-500" />
-          </div>
-
-          {/* SLOT 7: SELESAI (Oval) */}
-          <div className="w-full flex flex-col items-center">
-            <div
-              onClick={() => handleSlotClick(7)}
-              className={`cursor-pointer transition-all ${
-                selectedItem ? "hover:scale-105" : ""
-              }`}
-            >
-              {slotAssignments[7] ? (
-                renderFlowchartShape(
-                  slotAssignments[7].type,
-                  slotAssignments[7].label,
-                  false,
-                  submitted && slotAssignments[7].id !== "fc-end",
-                  submitted && slotAssignments[7].id === "fc-end"
-                )
-              ) : (
-                renderFlowchartShape("terminator", "Slot 7: [Ketuk untuk pasang SELESAI]", true)
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Hasil & Aksi */}
+      {/* Hasil & Evaluasi */}
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200">
         <div className="text-xs text-slate-500">
-          Slot terisi: {Object.keys(slotAssignments).length} dari {FLOWCHART_SLOTS.length}
+          Geser simbol untuk menata bagan alir dan hubungkan panah dari Mulai ke Selesai.
         </div>
 
         <div className="flex items-center gap-3">
@@ -622,35 +621,121 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrong
               <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-4 py-2 rounded-xl border border-emerald-200">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 <span className="text-xs font-bold">
-                  Bagan Alir Sempurna! Skor Rubrik: {result.rubricScore}/4 ({result.percentage}%)
+                  Bagan Alir Mandiri Tuntas! Skor Rubrik: {result.rubricScore}/4 ({result.percentage}%)
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-700 bg-rose-50 px-3 py-2 rounded-xl border border-rose-200">
-                  <AlertCircle className="w-4 h-4 text-rose-600" />
-                  <span>Skor: {result?.rubricScore}/4. {result?.feedback} (-1 Nyawa)</span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-rose-700 bg-rose-50 px-3 py-2 rounded-xl border border-rose-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <div>
+                    <span className="font-bold">Skor: {result?.rubricScore}/4 (Belum Tuntas). -1 Nyawa.</span>
+                    {result?.errors.slice(0, 2).map((err, i) => (
+                      <p key={i} className="text-[11px] font-normal text-rose-600 mt-0.5">• {err}</p>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  onClick={handleReset}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" /> Ulangi Pasang
-                </button>
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Buat Ulang Diagram
+                  </button>
+                </div>
               </div>
             )
           ) : (
             <button
-              disabled={Object.keys(slotAssignments).length < FLOWCHART_SLOTS.length}
+              disabled={nodes.length < 4}
               onClick={handleSubmit}
               className="px-6 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-amber-200 transition-all flex items-center gap-2 cursor-pointer"
             >
-              <span>Validasi Diagram Alir</span>
+              <span>Uji Diagram Alir Mandiri</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
         </div>
       </div>
+
+      {/* Modal Dialog: Memilih Teks Instruksi untuk Bentuk yang Dipilih Murid */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-3.5 h-3.5 inline-block ${
+                    selectedShapeTool === "terminator"
+                      ? "rounded-full bg-emerald-500"
+                      : selectedShapeTool === "io"
+                      ? "skew-x-[-12deg] bg-sky-500"
+                      : selectedShapeTool === "process"
+                      ? "bg-indigo-500"
+                      : "rotate-45 bg-amber-500"
+                  }`}
+                />
+                <h3 className="text-sm font-bold text-slate-800">
+                  Buat Simbol{" "}
+                  {selectedShapeTool === "terminator"
+                    ? "Terminator"
+                    : selectedShapeTool === "io"
+                    ? "Input / Output"
+                    : selectedShapeTool === "process"
+                    ? "Proses"
+                    : "Decision (Keputusan)"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Pilihlah teks instruksi algoritma kantin yang menurutmu <strong>paling tepat</strong>{" "}
+              menggunakan bentuk simbol ini:
+            </p>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {availableTexts.map((item) => {
+                const isSelected = selectedTextId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedTextId(item.id)}
+                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-amber-50 border-amber-400 ring-2 ring-amber-300 font-bold text-amber-950"
+                        : "bg-slate-50 border-slate-200 hover:border-amber-300 text-slate-700"
+                    }`}
+                  >
+                    {item.label}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                disabled={!selectedTextId}
+                onClick={handleCreateNode}
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                Tempatkan di Kertas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
