@@ -338,8 +338,8 @@ function PlayGameContent() {
       hint2: "Pastikan menghubungkan: MULAI -> INPUT -> DECISION -> OUTPUT BERHASIL (Cabang Ya) -> SELESAI.",
     },
     5: {
-      hint1: "Baris di dalam percabangan JIKA harus di-indentasi (menjorok ke dalam 1 tab). Jangan lupa akhiri dengan AKHIR JIKA.",
-      hint2: "Baris sisa_saldo dan TULIS Pembayaran Berhasil harus memiliki indentasi 1 tingkat di bawah JIKA.",
+      hint1: "Struktur pseudocode diawali dengan PROGRAM dan MULAI, serta ditutup dengan SELESAI. Baris di dalam percabangan JIKA harus di-indentasi (menjorok ke dalam 1 tab).",
+      hint2: "Urutan awal: 1. PROGRAM -> 2. MULAI -> 3. BACA ... Baris sisa_saldo dan TULIS Pembayaran Berhasil memiliki indentasi 1 tingkat di bawah JIKA.",
     },
     6: {
       hint1: "Perhatikan operator perbandingan pada baris pengecekan saldo: apakah menggunakan > atau >=?",
