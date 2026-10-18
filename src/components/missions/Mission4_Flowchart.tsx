@@ -313,6 +313,9 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
     const fromCenter = { x: fromNode.x + fromDims.w / 2, y: fromNode.y + fromDims.h / 2 };
     const toCenter = { x: toNode.x + toDims.w / 2, y: toNode.y + toDims.h / 2 };
 
+    const dx = toCenter.x - fromCenter.x;
+    const dy = toCenter.y - fromCenter.y;
+
     let startX = 0;
     let startY = 0;
     let endX = 0;
@@ -320,64 +323,134 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
     let pathD = "";
     let labelPos = { x: 0, y: 0 };
 
-    // Kasus 1: Cabang TIDAK dari Decision (keluar dari kanan belah ketupat)
-    if (fromNode.chosenType === "decision" && conn.label === "TIDAK") {
-      startX = fromNode.x + fromDims.w; // Sisi kanan belah ketupat
-      startY = fromNode.y + fromDims.h / 2;
+    // KASUS KHUSUS: Decision Node (Belah Ketupat)
+    if (fromNode.chosenType === "decision") {
+      // Jika target ada di sebelah KANAN (dx > 40)
+      if (dx > 40) {
+        startX = fromNode.x + fromDims.w; // Titik sudut kanan belah ketupat
+        startY = fromNode.y + fromDims.h / 2;
 
-      // Jika node tujuan berada di bawah atau kanan
-      endX = toNode.x + toDims.w / 2;
-      endY = toNode.y; // Atas simbol tujuan
+        if (Math.abs(dy) <= fromDims.h / 2 + 25) {
+          endX = toNode.x;
+          endY = toNode.y + toDims.h / 2;
+          if (Math.abs(startY - endY) < 15) {
+            endY = startY;
+            pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+          } else {
+            const midX = (startX + endX) / 2;
+            pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+          }
+        } else {
+          endX = toNode.x + toDims.w / 2;
+          endY = toNode.y;
+          pathD = `M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`;
+        }
+        // Label di atas garis keluar kanan (di luar simbol)
+        labelPos = { x: startX + 18, y: startY - 11 };
+      }
+      // Jika target ada di sebelah KIRI (dx < -40)
+      else if (dx < -40) {
+        startX = fromNode.x; // Titik sudut kiri belah ketupat
+        startY = fromNode.y + fromDims.h / 2;
 
-      // Garis horizontal ke kanan lalu lurus vertikal ke bawah
-      pathD = `M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`;
-      labelPos = { x: (startX + endX) / 2, y: startY - 8 };
+        if (Math.abs(dy) <= fromDims.h / 2 + 25) {
+          endX = toNode.x + toDims.w;
+          endY = toNode.y + toDims.h / 2;
+          if (Math.abs(startY - endY) < 15) {
+            endY = startY;
+            pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+          } else {
+            const midX = (startX + endX) / 2;
+            pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+          }
+        } else {
+          endX = toNode.x + toDims.w / 2;
+          endY = toNode.y;
+          pathD = `M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`;
+        }
+        labelPos = { x: startX - 18, y: startY - 11 };
+      }
+      // Target ada di BAWAH (arah sumbu Y)
+      else {
+        startX = fromNode.x + fromDims.w / 2; // Titik sudut bawah belah ketupat
+        startY = fromNode.y + fromDims.h;
+        endX = toNode.x + toDims.w / 2;
+        endY = toNode.y;
+
+        if (Math.abs(startX - endX) < 15) {
+          endX = startX;
+          pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+        } else {
+          const midY = (startY + endY) / 2;
+          pathD = `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`;
+        }
+        // Label di sisi kanan garis vertikal keluar bawah
+        labelPos = { x: startX + 18, y: startY + 16 };
+      }
     }
-    // Kasus 2: Arah Turun Vertikal (Top to Bottom)
-    else if (toCenter.y > fromCenter.y + 20) {
-      startX = fromNode.x + fromDims.w / 2;
-      startY = fromNode.y + fromDims.h; // Bawah simbol asal
-      endX = toNode.x + toDims.w / 2;
-      endY = toNode.y; // Atas simbol tujuan
+    // KASUS UMUM: Terminator, Input/Output, Process
+    else {
+      // 1. Arah Turun Vertikal (dy > 30)
+      if (dy > 30) {
+        startX = fromNode.x + fromDims.w / 2;
+        startY = fromNode.y + fromDims.h;
+        endX = toNode.x + toDims.w / 2;
+        endY = toNode.y;
 
-      // Jika posisi horizontal hampir sejajar (selisih < 20px), luruskan otomatis
-      if (Math.abs(startX - endX) < 20) {
-        endX = startX;
-        pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
-        labelPos = { x: startX + 16, y: (startY + endY) / 2 };
-      } else {
-        // Garis siku-siku bertingkat (Z / Siku 90 derajat)
+        if (Math.abs(startX - endX) < 15) {
+          endX = startX;
+          pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+          labelPos = { x: startX + 16, y: (startY + endY) / 2 };
+        } else {
+          const midY = (startY + endY) / 2;
+          pathD = `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`;
+          labelPos = { x: startX + 16, y: (startY + midY) / 2 };
+        }
+      }
+      // 2. Arah Horizontal Kanan (dx > 40)
+      else if (dx > 40) {
+        startX = fromNode.x + fromDims.w;
+        startY = fromNode.y + fromDims.h / 2;
+        endX = toNode.x;
+        endY = toNode.y + toDims.h / 2;
+
+        if (Math.abs(startY - endY) < 15) {
+          endY = startY;
+          pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+          labelPos = { x: (startX + endX) / 2, y: startY - 9 };
+        } else {
+          const midX = (startX + endX) / 2;
+          pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+          labelPos = { x: (startX + midX) / 2, y: startY - 9 };
+        }
+      }
+      // 3. Arah Horizontal Kiri (dx < -40)
+      else if (dx < -40) {
+        startX = fromNode.x;
+        startY = fromNode.y + fromDims.h / 2;
+        endX = toNode.x + toDims.w;
+        endY = toNode.y + toDims.h / 2;
+
+        if (Math.abs(startY - endY) < 15) {
+          endY = startY;
+          pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+          labelPos = { x: (startX + endX) / 2, y: startY - 9 };
+        } else {
+          const midX = (startX + endX) / 2;
+          pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+          labelPos = { x: (startX + midX) / 2, y: startY - 9 };
+        }
+      }
+      // 4. Default / Naik ke Atas
+      else {
+        startX = fromNode.x + fromDims.w / 2;
+        startY = fromNode.y;
+        endX = toNode.x + toDims.w / 2;
+        endY = toNode.y + toDims.h;
         const midY = (startY + endY) / 2;
         pathD = `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`;
         labelPos = { x: startX + 16, y: (startY + midY) / 2 };
       }
-    }
-    // Kasus 3: Horizontal (Kiri ke Kanan)
-    else if (toCenter.x > fromCenter.x + 20) {
-      startX = fromNode.x + fromDims.w;
-      startY = fromNode.y + fromDims.h / 2;
-      endX = toNode.x;
-      endY = toNode.y + toDims.h / 2;
-
-      if (Math.abs(startY - endY) < 15) {
-        endY = startY;
-        pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
-        labelPos = { x: (startX + endX) / 2, y: startY - 8 };
-      } else {
-        const midX = (startX + endX) / 2;
-        pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
-        labelPos = { x: (startX + midX) / 2, y: startY - 8 };
-      }
-    }
-    // Kasus 4: Default Lurus Siku
-    else {
-      startX = fromNode.x + fromDims.w / 2;
-      startY = fromNode.y + fromDims.h;
-      endX = toNode.x + toDims.w / 2;
-      endY = toNode.y;
-      const midY = (startY + endY) / 2;
-      pathD = `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`;
-      labelPos = { x: startX + 16, y: (startY + midY) / 2 };
     }
 
     return { pathD, labelPos, label: conn.label };
@@ -632,18 +705,18 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
           </div>
         )}
 
-        {/* SVG Render Garis Panah Tegak Lurus (Orthogonal) & Ujung Panah Jelas (Revisi 1 & 3) */}
+        {/* SVG Render Garis Panah Tegak Lurus (Orthogonal) & Ujung Panah Ramping & Rapi */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
           <defs>
             <marker
               id="arrowhead-orthogonal"
-              markerWidth="12"
-              markerHeight="10"
-              refX="10"
-              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              refX="5"
+              refY="3"
               orient="auto"
             >
-              <path d="M 0 1 L 11 5 L 0 9 z" fill="#0f172a" />
+              <path d="M 0 1 L 5 3 L 0 5 z" fill="#334155" />
             </marker>
           </defs>
 
@@ -653,35 +726,35 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
 
             return (
               <g key={conn.id}>
-                {/* Garis Panah Otomatis Lurus Tegak Siku */}
+                {/* Garis Panah Otomatis Lurus Tegak Siku (Ramping 1.5px) */}
                 <path
                   d={pathData.pathD}
                   fill="none"
-                  stroke="#0f172a"
-                  strokeWidth="2.5"
+                  stroke="#334155"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
-                  strokeLinejoin="miter"
+                  strokeLinejoin="round"
                   markerEnd="url(#arrowhead-orthogonal)"
                 />
 
-                {/* Label Percabangan [YA] atau [TIDAK] */}
+                {/* Label Percabangan [YA] atau [TIDAK] Ramping & Proporsional */}
                 {pathData.label && (
                   <g transform={`translate(${pathData.labelPos.x}, ${pathData.labelPos.y})`}>
                     <rect
-                      x="-22"
-                      y="-11"
-                      width="44"
-                      height="18"
-                      rx="4"
+                      x="-13"
+                      y="-7.5"
+                      width="26"
+                      height="15"
+                      rx="3"
                       fill={pathData.label === "YA" ? "#ecfdf5" : "#fef2f2"}
                       stroke={pathData.label === "YA" ? "#10b981" : "#ef4444"}
-                      strokeWidth="1.5"
+                      strokeWidth="1"
                     />
                     <text
                       x="0"
-                      y="2"
+                      y="1"
                       fill={pathData.label === "YA" ? "#047857" : "#b91c1c"}
-                      fontSize="10"
+                      fontSize="9"
                       fontWeight="bold"
                       textAnchor="middle"
                       dominantBaseline="middle"
