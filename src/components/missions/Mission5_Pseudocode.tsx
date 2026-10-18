@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { PARSON_DATA, ParsonLine } from "@/data/storyData";
 import {
   CheckCircle2,
@@ -13,9 +13,11 @@ import {
   ChevronLeft,
   FileCode2,
   GripVertical,
+  Save,
 } from "lucide-react";
 
 interface Mission5Props {
+  studentId?: string;
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
   onWrongAttempt: () => void;
 }
@@ -28,7 +30,10 @@ interface UserLine {
   text: string;
 }
 
-export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWrongAttempt }) => {
+export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSuccess, onWrongAttempt }) => {
+  const storageKey = `algocraft_draft_m5_${studentId || "default"}`;
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   // Acak urutan awal baris pseudocode dan inisialisasi indent = 0
   const [lines, setLines] = useState<UserLine[]>(() => {
     return [...PARSON_DATA]
@@ -50,6 +55,33 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
     percentage: number;
     isPass: boolean;
   } | null>(null);
+
+  // Pemulihan draf pseudocode dari memori HP/browser
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === PARSON_DATA.length) {
+          setLines(parsed);
+          setDraftLoaded(true);
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring Misi 5 draft:", e);
+    }
+  }, [storageKey]);
+
+  // Simpan draf urutan & indentasi pseudocode otomatis
+  useEffect(() => {
+    if (!submitted) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(lines));
+      } catch (e) {
+        console.error("Error saving Misi 5 draft:", e);
+      }
+    }
+  }, [lines, storageKey, submitted]);
 
   // Status Drag & Drop (Desktop & Mobile)
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
@@ -169,6 +201,10 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
     setResult(null);
     setDraggedIdx(null);
     setDragOverIdx(null);
+    setDraftLoaded(false);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
   };
 
   const handleSubmit = () => {
@@ -209,6 +245,9 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
     setSubmitted(true);
 
     if (isPass) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       onSuccess(percentage, rubricScore, lines);
     } else {
       onWrongAttempt();
@@ -235,6 +274,22 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ onSuccess, onWron
           <span>• 💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop baris</strong> atau gunakan tombol panah & Tab.</span>
         </div>
       </div>
+
+      {/* Notifikasi Pemulihan Draf */}
+      {draftLoaded && !submitted && (
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Draf susunan pseudocode & indentasi sebelumnya dipulihkan otomatis dari memori HP.</span>
+          </div>
+          <button
+            onClick={() => setDraftLoaded(false)}
+            className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Code Editor Style View */}
       <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border border-slate-800 shadow-xl font-mono space-y-2 select-none">

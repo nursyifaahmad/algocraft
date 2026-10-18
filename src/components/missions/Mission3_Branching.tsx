@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BRANCHING_DATA } from "@/data/storyData";
-import { CheckCircle2, AlertCircle, ArrowRight, RotateCcw, GitBranch, Play, Terminal } from "lucide-react";
+import { CheckCircle2, AlertCircle, ArrowRight, RotateCcw, GitBranch, Play, Terminal, Save } from "lucide-react";
 
 interface Mission3Props {
+  studentId?: string;
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
   onWrongAttempt: () => void;
 }
 
-export const Mission3_Branching: React.FC<Mission3Props> = ({ onSuccess, onWrongAttempt }) => {
+export const Mission3_Branching: React.FC<Mission3Props> = ({ studentId, onSuccess, onWrongAttempt }) => {
+  const storageKey = `algocraft_draft_m3_${studentId || "default"}`;
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   // Pilihan siswa per kasus percabangan
   const [selectedConditions, setSelectedConditions] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -25,6 +29,33 @@ export const Mission3_Branching: React.FC<Mission3Props> = ({ onSuccess, onWrong
   const [simBelanja, setSimBelanja] = useState<number>(35000);
   const [simJam, setSimJam] = useState<string>("istirahat_1");
 
+  // Pemulihan draf pengerjaan
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+          setSelectedConditions(parsed);
+          setDraftLoaded(true);
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring Misi 3 draft:", e);
+    }
+  }, [storageKey]);
+
+  // Simpan draf otomatis
+  useEffect(() => {
+    if (Object.keys(selectedConditions).length > 0 && !submitted) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(selectedConditions));
+      } catch (e) {
+        console.error("Error saving Misi 3 draft:", e);
+      }
+    }
+  }, [selectedConditions, storageKey, submitted]);
+
   const handleSelect = (caseId: string, condId: string) => {
     if (submitted) return;
     setSelectedConditions((prev) => ({
@@ -37,6 +68,10 @@ export const Mission3_Branching: React.FC<Mission3Props> = ({ onSuccess, onWrong
     setSelectedConditions({});
     setSubmitted(false);
     setResult(null);
+    setDraftLoaded(false);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
   };
 
   const handleSubmit = () => {
@@ -70,6 +105,9 @@ export const Mission3_Branching: React.FC<Mission3Props> = ({ onSuccess, onWrong
     setSubmitted(true);
 
     if (isPass) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       onSuccess(percentage, rubricScore, selectedConditions);
     } else {
       onWrongAttempt();
@@ -100,6 +138,22 @@ export const Mission3_Branching: React.FC<Mission3Props> = ({ onSuccess, onWrong
           <span>• Analisis skenario dan pilih struktur percabangan yang tepat.</span>
         </div>
       </div>
+
+      {/* Notifikasi Pemulihan Draf */}
+      {draftLoaded && !submitted && (
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Draf pilihan logika percabangan sebelumnya dipulihkan otomatis dari memori HP.</span>
+          </div>
+          <button
+            onClick={() => setDraftLoaded(false)}
+            className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Simulator Interaktif Cepat */}
       <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl border border-slate-800 shadow-md">

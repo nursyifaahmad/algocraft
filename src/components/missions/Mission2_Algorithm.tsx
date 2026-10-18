@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ALGO_STEPS_DATA, AlgoStep } from "@/data/storyData";
 import {
   CheckCircle2,
@@ -11,14 +11,19 @@ import {
   RotateCcw,
   ListOrdered,
   GripVertical,
+  Save,
 } from "lucide-react";
 
 interface Mission2Props {
+  studentId?: string;
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
   onWrongAttempt: () => void;
 }
 
-export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrongAttempt }) => {
+export const Mission2_Algorithm: React.FC<Mission2Props> = ({ studentId, onSuccess, onWrongAttempt }) => {
+  const storageKey = `algocraft_draft_m2_${studentId || "default"}`;
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   // Acak urutan awal
   const [steps, setSteps] = useState<AlgoStep[]>(() => {
     return [...ALGO_STEPS_DATA].sort(() => Math.random() - 0.5);
@@ -31,6 +36,33 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
     rubricScore: number;
     isPass: boolean;
   } | null>(null);
+
+  // Pemulihan draf dari penyimpanan lokal
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(storageKey);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (Array.isArray(parsed) && parsed.length === ALGO_STEPS_DATA.length) {
+          setSteps(parsed);
+          setDraftLoaded(true);
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring Misi 2 draft:", e);
+    }
+  }, [storageKey]);
+
+  // Simpan draf urutan otomatis
+  useEffect(() => {
+    if (!submitted) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(steps));
+      } catch (e) {
+        console.error("Error saving Misi 2 draft:", e);
+      }
+    }
+  }, [steps, storageKey, submitted]);
 
   // Status Drag & Drop (Desktop & Mobile)
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
@@ -131,6 +163,10 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
     setResult(null);
     setDraggedIdx(null);
     setDragOverIdx(null);
+    setDraftLoaded(false);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
   };
 
   const handleSubmit = () => {
@@ -163,6 +199,9 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
     setSubmitted(true);
 
     if (isPass) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       onSuccess(percentage, rubricScore, steps);
     } else {
       onWrongAttempt();
@@ -188,6 +227,22 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ onSuccess, onWrong
           <span>• 💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop (geser langsung)</strong> kartu atau gunakan tombol panah Naik / Turun.</span>
         </div>
       </div>
+
+      {/* Notifikasi Pemulihan Draf */}
+      {draftLoaded && !submitted && (
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Draf urutan algoritma sebelumnya dipulihkan otomatis dari memori HP.</span>
+          </div>
+          <button
+            onClick={() => setDraftLoaded(false)}
+            className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Daftar Langkah Interaktif dengan Drag & Drop */}
       <div className="space-y-2.5 max-w-2xl mx-auto select-none">

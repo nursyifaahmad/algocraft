@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FLOWCHART_ITEMS, FlowchartNodeData } from "@/data/storyData";
 import {
   CheckCircle2,
@@ -13,6 +13,7 @@ import {
   Share2,
   X,
   Undo2,
+  Save,
 } from "lucide-react";
 
 interface CanvasNode {
@@ -32,6 +33,7 @@ interface Connection {
 }
 
 interface Mission4Props {
+  studentId?: string;
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
   onWrongAttempt: () => void;
 }
@@ -44,7 +46,10 @@ const NODE_DIMS = {
   decision: { w: 210, h: 80 },
 };
 
-export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrongAttempt }) => {
+export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSuccess, onWrongAttempt }) => {
+  const storageKey = `algocraft_draft_m4_${studentId || "default"}`;
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   // Kanvas kertas kosong murni
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -79,6 +84,38 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrong
     isPass: boolean;
     errors: string[];
   } | null>(null);
+
+  // Pemulihan draf diagram alir dari memori HP/browser
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
+            setNodes(parsed.nodes);
+            setDraftLoaded(true);
+          }
+          if (Array.isArray(parsed.connections)) {
+            setConnections(parsed.connections);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring Misi 4 flowchart draft:", e);
+    }
+  }, [storageKey]);
+
+  // Simpan draf diagram alir otomatis setiap kali ada penambahan/pergeseran simbol atau garis
+  useEffect(() => {
+    if ((nodes.length > 0 || connections.length > 0) && !submitted) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ nodes, connections }));
+      } catch (e) {
+        console.error("Error saving Misi 4 flowchart draft:", e);
+      }
+    }
+  }, [nodes, connections, storageKey, submitted]);
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -256,6 +293,10 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrong
     setConnectingSourceId(null);
     setSubmitted(false);
     setResult(null);
+    setDraftLoaded(false);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
   };
 
   // 5. Kalkulasi Garis Alur Otomatis Tegak Lurus (Orthogonal / Manhattan Routing)
@@ -419,6 +460,9 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrong
     setSubmitted(true);
 
     if (isPass) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       onSuccess(percentage, rubricScore, { nodes, connections });
     } else {
       onWrongAttempt();
@@ -446,6 +490,22 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ onSuccess, onWrong
           <span>• Hubungkan garis dari simbol asal ke simbol tujuan. Garis akan otomatis lurus tegak siku!</span>
         </div>
       </div>
+
+      {/* Notifikasi Pemulihan Draf */}
+      {draftLoaded && !submitted && (
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Draf diagram alir (simbol & garis panah) sebelumnya dipulihkan otomatis dari memori HP.</span>
+          </div>
+          <button
+            onClick={() => setDraftLoaded(false)}
+            className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Toolbar Kertas Gambar (Alat Simbol) */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">

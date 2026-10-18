@@ -23,16 +23,21 @@ import {
   LogOut,
   HelpCircle,
   Award,
+  Wifi,
+  WifiOff,
+  Database,
+  ShieldCheck,
 } from "lucide-react";
 
 function PlayGameContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const studentId = searchParams.get("studentId");
+  const studentIdParam = searchParams.get("studentId");
 
   const [student, setStudent] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<number>(1); // 1 sampai 6
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   // Modals
   const [showBadges, setShowBadges] = useState(false);
@@ -42,25 +47,116 @@ function PlayGameContent() {
   // Waktu pengerjaan misi (detik)
   const [timeSpent, setTimeSpent] = useState<number>(0);
 
+  // Deteksi status koneksi internet browser
   useEffect(() => {
-    if (!studentId) {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    let currentId = studentIdParam;
+
+    // 1. Pemulihan Persisten: Jika param studentId hilang (misal HP restart atau browser reload)
+    if (!currentId) {
+      try {
+        const storedId = localStorage.getItem("algocraft_student_id");
+        if (storedId) {
+          currentId = storedId;
+        } else {
+          const session = localStorage.getItem("algocraft_student_session");
+          if (session) {
+            const parsed = JSON.parse(session);
+            if (parsed?.studentId) {
+              currentId = parsed.studentId;
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Storage error:", e);
+      }
+    }
+
+    if (!currentId) {
       router.push("/");
       return;
     }
 
-    fetch(`/api/student/state?studentId=${studentId}`)
-      .then((res) => res.json())
+    // Jika URL belum memiliki studentId tapi kita temukan di localStorage, perbarui URL
+    if (!studentIdParam && currentId) {
+      router.replace(`/play?studentId=${currentId}`);
+    }
+
+    // 2. Pemulihan Instan dari Cache Lokal (Offline First)
+    try {
+      const cached = localStorage.getItem(`algocraft_student_cache_${currentId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.id) {
+          setStudent(parsed);
+          const savedTab = localStorage.getItem(`algocraft_active_tab_${currentId}`);
+          if (savedTab) {
+            const tabNum = parseInt(savedTab, 10);
+            if (!isNaN(tabNum) && tabNum >= 1 && tabNum <= 6) {
+              setActiveTab(tabNum);
+            } else {
+              setActiveTab(parsed.currentLevel || 1);
+            }
+          } else {
+            setActiveTab(parsed.currentLevel || 1);
+          }
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      console.error("Error reading cache:", e);
+    }
+
+    // 3. Sinkronisasi Data Terbaru dari Server API
+    fetch(`/api/student/state?studentId=${currentId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal mengambil data dari server");
+        return res.json();
+      })
       .then((data) => {
         if (data.student) {
           setStudent(data.student);
-          setActiveTab(data.student.currentLevel || 1);
+          setIsOffline(false);
+
+          // Simpan ke storage lokal
+          try {
+            localStorage.setItem(`algocraft_student_cache_${currentId}`, JSON.stringify(data.student));
+            localStorage.setItem("algocraft_student_id", data.student.id);
+
+            const savedTab = localStorage.getItem(`algocraft_active_tab_${currentId}`);
+            if (savedTab) {
+              const tabNum = parseInt(savedTab, 10);
+              if (!isNaN(tabNum) && tabNum >= 1 && tabNum <= 6) {
+                setActiveTab(tabNum);
+              } else {
+                setActiveTab(data.student.currentLevel || 1);
+              }
+            } else {
+              setActiveTab(data.student.currentLevel || 1);
+            }
+          } catch (e) {
+            console.error("Error updating local cache:", e);
+          }
         } else {
           router.push("/");
         }
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.warn("Koneksi offline atau server tidak merespons, menggunakan data lokal:", err);
+        setIsOffline(true);
+      })
       .finally(() => setLoading(false));
-  }, [studentId, router]);
+  }, [studentIdParam, router]);
 
   // Timer counter
   useEffect(() => {
@@ -69,6 +165,18 @@ function PlayGameContent() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleTabChange = (tabNum: number) => {
+    setActiveTab(tabNum);
+    setTimeSpent(0);
+    if (student?.id) {
+      try {
+        localStorage.setItem(`algocraft_active_tab_${student.id}`, tabNum.toString());
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
 
   const handleWrongAttempt = async () => {
     if (!student) return;
@@ -79,14 +187,27 @@ function PlayGameContent() {
         body: JSON.stringify({ studentId: student.id, action: "decrease" }),
       });
       const data = await res.json();
-      setStudent((prev: any) => ({ ...prev, hearts: data.hearts }));
+      const updatedHearts = data.hearts ?? Math.max(0, (student.hearts || 3) - 1);
+      const updatedStudent = { ...student, hearts: updatedHearts };
+      setStudent(updatedStudent);
+      try {
+        localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+      } catch (e) {}
     } catch (e) {
-      console.error(e);
+      console.warn("Offline error during heart decrease:", e);
+      // Fallback offline lokal
+      const updatedStudent = { ...student, hearts: Math.max(0, (student.hearts || 3) - 1) };
+      setStudent(updatedStudent);
+      try {
+        localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+      } catch (err) {}
     }
   };
 
   const handleDeductCoins = async (amount: number): Promise<boolean> => {
     if (!student) return false;
+    if (student.coins < amount) return false;
+
     try {
       const res = await fetch("/api/student/hint", {
         method: "POST",
@@ -95,13 +216,23 @@ function PlayGameContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setStudent((prev: any) => ({ ...prev, coins: data.coins }));
+        const updatedStudent = { ...student, coins: data.coins };
+        setStudent(updatedStudent);
+        try {
+          localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+        } catch (e) {}
         return true;
       }
       return false;
     } catch (e) {
-      console.error(e);
-      return false;
+      console.warn("Offline hint deduction fallback:", e);
+      // Fallback offline
+      const updatedStudent = { ...student, coins: Math.max(0, student.coins - amount) };
+      setStudent(updatedStudent);
+      try {
+        localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+      } catch (err) {}
+      return true;
     }
   };
 
@@ -141,17 +272,40 @@ function PlayGameContent() {
       if (data.success) {
         fireSuccessConfetti();
         setStudent(data.student);
+        try {
+          localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(data.student));
+        } catch (e) {}
 
         // Jika berhasil dan bukan misi terakhir, buka tab berikutnya
         if (data.isPassing && activeTab < 6) {
+          const nextTab = activeTab + 1;
           setTimeout(() => {
-            setActiveTab(activeTab + 1);
-            setTimeSpent(0);
+            handleTabChange(nextTab);
           }, 1800);
         }
       }
     } catch (e) {
-      console.error(e);
+      console.warn("Server submission offline error, updating offline state:", e);
+      fireSuccessConfetti();
+      const nextLevel = Math.max(student.currentLevel, activeTab + 1);
+      const isFinished = activeTab === 6 && percentage >= 75;
+      const updatedStudent = {
+        ...student,
+        xp: (student.xp || 0) + 150,
+        coins: (student.coins || 0) + 20,
+        currentLevel: nextLevel,
+        isFinished,
+      };
+      setStudent(updatedStudent);
+      try {
+        localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+      } catch (err) {}
+
+      if (activeTab < 6) {
+        setTimeout(() => {
+          handleTabChange(activeTab + 1);
+        }, 1800);
+      }
     }
   };
 
@@ -218,9 +372,28 @@ function PlayGameContent() {
               ⚡
             </div>
             <div>
-              <h1 className="text-sm font-black tracking-tight text-slate-900 leading-none">
-                AlgoCraft PBL
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-black tracking-tight text-slate-900 leading-none">
+                  AlgoCraft PBL
+                </h1>
+                {/* Indikator Penyimpanan Lokal Persisten */}
+                <div
+                  className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold"
+                  title="Data progres misi tersimpan persisten di HP/browser ini"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Tersimpan di HP</span>
+                </div>
+                {isOffline && (
+                  <div
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-300 text-amber-800 text-[10px] font-semibold"
+                    title="Koneksi terputus, data tersimpan secara lokal"
+                  >
+                    <WifiOff className="w-3 h-3 text-amber-600" />
+                    <span>Mode Offline</span>
+                  </div>
+                )}
+              </div>
               <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
                 Sesi: <span className="text-indigo-600 font-bold">{student.session?.code}</span> •
                 Absen #{student.absentNo} ({student.name})
@@ -243,6 +416,24 @@ function PlayGameContent() {
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
+        {/* Offline Warning Banner jika jaringan putus */}
+        {isOffline && (
+          <div className="bg-amber-500/10 border border-amber-300 text-amber-900 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Koneksi internet bermasalah.</strong> Jangan khawatir! Misi tetap dapat dikerjakan, draf dan progres kamu tersimpan otomatis di perangkat ini.
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-2.5 py-1 bg-amber-600 text-white rounded-lg text-[11px] font-bold shrink-0 hover:bg-amber-700 cursor-pointer"
+            >
+              Coba Sambung Ulang
+            </button>
+          </div>
+        )}
+
         {/* Mission Level Navigation Tabs (Responsive Scrollable) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
           {missionTabs.map((tab) => {
@@ -261,10 +452,7 @@ function PlayGameContent() {
               <button
                 key={tab.num}
                 disabled={!isUnlocked}
-                onClick={() => {
-                  setActiveTab(tab.num);
-                  setTimeSpent(0);
-                }}
+                onClick={() => handleTabChange(tab.num)}
                 className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                   isActive
                     ? "bg-slate-900 text-white shadow-md shadow-slate-300 scale-102 ring-2 ring-indigo-500"
@@ -284,36 +472,42 @@ function PlayGameContent() {
         <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200/90 shadow-sm relative overflow-hidden">
           {activeTab === 1 && (
             <Mission1_IPO
+              studentId={student.id}
               onSuccess={handleMissionSuccess}
               onWrongAttempt={handleWrongAttempt}
             />
           )}
           {activeTab === 2 && (
             <Mission2_Algorithm
+              studentId={student.id}
               onSuccess={handleMissionSuccess}
               onWrongAttempt={handleWrongAttempt}
             />
           )}
           {activeTab === 3 && (
             <Mission3_Branching
+              studentId={student.id}
               onSuccess={handleMissionSuccess}
               onWrongAttempt={handleWrongAttempt}
             />
           )}
           {activeTab === 4 && (
             <Mission4_Flowchart
+              studentId={student.id}
               onSuccess={handleMissionSuccess}
               onWrongAttempt={handleWrongAttempt}
             />
           )}
           {activeTab === 5 && (
             <Mission5_Pseudocode
+              studentId={student.id}
               onSuccess={handleMissionSuccess}
               onWrongAttempt={handleWrongAttempt}
             />
           )}
           {activeTab === 6 && (
             <Mission6_Debugging
+              studentId={student.id}
               onSuccess={handleMissionSuccess}
               onWrongAttempt={handleWrongAttempt}
             />

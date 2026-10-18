@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DEBUG_SCENARIOS, DebugScenario } from "@/data/storyData";
 import {
   CheckCircle2,
@@ -11,14 +11,19 @@ import {
   Table,
   Wrench,
   HelpCircle,
+  Save,
 } from "lucide-react";
 
 interface Mission6Props {
+  studentId?: string;
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
   onWrongAttempt: () => void;
 }
 
-export const Mission6_Debugging: React.FC<Mission6Props> = ({ onSuccess, onWrongAttempt }) => {
+export const Mission6_Debugging: React.FC<Mission6Props> = ({ studentId, onSuccess, onWrongAttempt }) => {
+  const storageKey = `algocraft_draft_m6_${studentId || "default"}`;
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   // Simpan baris yang dicurigai sebagai bug per skenario
   const [selectedLines, setSelectedLines] = useState<Record<string, number>>({});
@@ -33,6 +38,48 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ onSuccess, onWrong
     rubricScore: number;
     isPass: boolean;
   } | null>(null);
+
+  // Pemulihan draf debugging dari memori HP
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          if (parsed.selectedLines) setSelectedLines(parsed.selectedLines);
+          if (parsed.selectedFixes) setSelectedFixes(parsed.selectedFixes);
+          if (typeof parsed.currentScenarioIndex === "number") {
+            setCurrentScenarioIndex(parsed.currentScenarioIndex);
+          }
+          if (
+            (parsed.selectedLines && Object.keys(parsed.selectedLines).length > 0) ||
+            (parsed.selectedFixes && Object.keys(parsed.selectedFixes).length > 0)
+          ) {
+            setDraftLoaded(true);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring Misi 6 draft:", e);
+    }
+  }, [storageKey]);
+
+  // Simpan draf otomatis
+  useEffect(() => {
+    if (
+      (Object.keys(selectedLines).length > 0 || Object.keys(selectedFixes).length > 0) &&
+      !submitted
+    ) {
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ selectedLines, selectedFixes, currentScenarioIndex })
+        );
+      } catch (e) {
+        console.error("Error saving Misi 6 draft:", e);
+      }
+    }
+  }, [selectedLines, selectedFixes, currentScenarioIndex, storageKey, submitted]);
 
   const scenario = DEBUG_SCENARIOS[currentScenarioIndex];
 
@@ -57,6 +104,10 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ onSuccess, onWrong
     setSelectedFixes({});
     setSubmitted(false);
     setResult(null);
+    setDraftLoaded(false);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
   };
 
   const handleSubmit = () => {
@@ -101,6 +152,9 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ onSuccess, onWrong
     setSubmitted(true);
 
     if (isPass) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       onSuccess(percentage, rubricScore, { selectedLines, selectedFixes });
     } else {
       onWrongAttempt();
@@ -130,6 +184,22 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ onSuccess, onWrong
           <span>• Ketuk baris kode yang salah, lalu pilih perbaikan di bawahnya.</span>
         </div>
       </div>
+
+      {/* Notifikasi Pemulihan Draf */}
+      {draftLoaded && !submitted && (
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Draf analisis data uji & debugging sebelumnya dipulihkan otomatis dari memori HP.</span>
+          </div>
+          <button
+            onClick={() => setDraftLoaded(false)}
+            className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Tab Navigasi Kasus Uji */}
       <div className="flex gap-2">

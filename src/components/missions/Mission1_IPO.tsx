@@ -1,19 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IPO_DATA, IPOCard } from "@/data/storyData";
-import { CheckCircle2, AlertCircle, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
+import { CheckCircle2, AlertCircle, ArrowRight, RotateCcw, Sparkles, Save } from "lucide-react";
 
 interface Mission1Props {
+  studentId?: string;
   onSuccess: (percentage: number, rubricScore: number, data: any) => void;
   onWrongAttempt: () => void;
 }
 
-export const Mission1_IPO: React.FC<Mission1Props> = ({ onSuccess, onWrongAttempt }) => {
+export const Mission1_IPO: React.FC<Mission1Props> = ({ studentId, onSuccess, onWrongAttempt }) => {
   // Mapping kartu ke wadah kategori: null = belum dipilih
   const [placements, setPlacements] = useState<Record<string, "input" | "process" | "output">>({});
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const [scoreResult, setScoreResult] = useState<{
     correctCount: number;
     total: number;
@@ -21,6 +23,35 @@ export const Mission1_IPO: React.FC<Mission1Props> = ({ onSuccess, onWrongAttemp
     rubricScore: number;
     isPass: boolean;
   } | null>(null);
+
+  const storageKey = `algocraft_draft_m1_${studentId || "default"}`;
+
+  // Pemulihan draf pengerjaan saat halaman dimuat
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(storageKey);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+          setPlacements(parsed);
+          setDraftLoaded(true);
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring Misi 1 draft:", e);
+    }
+  }, [storageKey]);
+
+  // Simpan draf otomatis setiap ada perpindahan kartu
+  useEffect(() => {
+    if (Object.keys(placements).length > 0 && !submitted) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(placements));
+      } catch (e) {
+        console.error("Error saving Misi 1 draft:", e);
+      }
+    }
+  }, [placements, storageKey, submitted]);
 
   const handleCardClick = (id: string) => {
     if (submitted) return;
@@ -47,6 +78,10 @@ export const Mission1_IPO: React.FC<Mission1Props> = ({ onSuccess, onWrongAttemp
     setSelectedCardId(null);
     setSubmitted(false);
     setScoreResult(null);
+    setDraftLoaded(false);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
   };
 
   const handleSubmit = () => {
@@ -77,6 +112,9 @@ export const Mission1_IPO: React.FC<Mission1Props> = ({ onSuccess, onWrongAttemp
     setSubmitted(true);
 
     if (isPass) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       onSuccess(percentage, rubricScore, placements);
     } else {
       onWrongAttempt();
@@ -108,6 +146,22 @@ export const Mission1_IPO: React.FC<Mission1Props> = ({ onSuccess, onWrongAttemp
           <span>• Ketuk kartu, lalu ketuk wadah tujuan untuk menempatkannya.</span>
         </div>
       </div>
+
+      {/* Notifikasi Pemulihan Draf */}
+      {draftLoaded && !submitted && (
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Draf pengerjaan sebelumnya dipulihkan otomatis dari memori HP.</span>
+          </div>
+          <button
+            onClick={() => setDraftLoaded(false)}
+            className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Kartu yang belum dipilah */}
       {unassignedCards.length > 0 && !submitted && (
