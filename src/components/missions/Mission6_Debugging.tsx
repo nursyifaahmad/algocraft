@@ -257,19 +257,19 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ studentId, onSucce
         </div>
 
         {/* Code Editor Style View with Indent & Blocks */}
-        <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-xl overflow-hidden font-mono">
+        <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-xl overflow-hidden font-mono text-slate-100">
           {/* Header Editor Bar */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/70 text-xs text-slate-400 select-none">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/70 text-xs text-slate-300 select-none">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-rose-500" />
               <span className="w-3 h-3 rounded-full bg-amber-500" />
               <span className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="ml-2 font-bold text-slate-300">kasir_debug.algo</span>
+              <span className="ml-2 font-bold text-slate-200">kasir_debug.algo</span>
               <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded bg-slate-800 text-rose-400 font-sans font-semibold ml-2">
                 Blok Struktur Algoritma
               </span>
             </div>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[11px] text-slate-400">
               {chosenLineIndex !== undefined ? `Baris ${chosenLineIndex + 1} ditandai` : "Ketuk baris untuk menandai bug"}
             </span>
           </div>
@@ -289,21 +289,21 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ studentId, onSucce
                 <div
                   key={idx}
                   onClick={() => handleSelectLine(idx)}
-                  className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+                  className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs cursor-pointer transition-all ${
                     submitted
                       ? isActualBug
-                        ? "bg-rose-950/80 border-2 border-rose-500 text-rose-200 font-bold shadow-lg"
+                        ? "bg-rose-950/80 border-2 border-rose-500 text-rose-100 font-bold shadow-lg"
                         : isWrongGuess
                         ? "bg-slate-900 border border-slate-700 text-slate-400 opacity-60"
                         : "text-slate-400 opacity-40 hover:opacity-70"
                       : isSelected
-                      ? "bg-rose-900/60 border-2 border-rose-500 text-rose-100 font-bold shadow-md shadow-rose-950/50"
-                      : "bg-slate-900/70 border border-slate-800/80 text-slate-300 hover:border-slate-700 hover:bg-slate-900"
+                      ? "bg-rose-950/90 border-2 border-rose-500 text-white font-bold shadow-md shadow-rose-950/50"
+                      : "bg-slate-900/80 border border-slate-800/80 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
                   }`}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {/* Line number gutter */}
-                    <div className="w-5 text-right text-xs text-slate-500 select-none flex-shrink-0 font-mono">
+                    <div className="w-5 text-right text-xs text-slate-400 select-none flex-shrink-0 font-mono font-bold">
                       {lineItem.lineNum}
                     </div>
 
@@ -320,13 +320,19 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ studentId, onSucce
                           <span className="text-cyan-400 font-bold select-none">└──</span>
                         </span>
                       )}
-                      <span className={
-                        lineItem.text.startsWith("JIKA") || lineItem.text === "SELAIN ITU"
-                          ? "text-cyan-300 font-bold"
-                          : lineItem.text === "MULAI" || lineItem.text === "SELESAI"
-                          ? "text-amber-300 font-bold"
-                          : ""
-                      }>
+                      <span
+                        className="font-bold tracking-wide"
+                        style={{
+                          color:
+                            lineItem.text === "MULAI" || lineItem.text === "SELESAI"
+                              ? "#facc15" // Bright Amber 400 - Super Clear & High Contrast
+                              : lineItem.text.startsWith("JIKA") || lineItem.text === "SELAIN ITU"
+                              ? "#38bdf8" // Bright Sky 400
+                              : isSelected
+                              ? "#ffffff" // Pure White when selected
+                              : "#f8fafc", // Crisp Slate 50
+                        }}
+                      >
                         {lineItem.text}
                       </span>
                     </div>
