@@ -15,6 +15,7 @@ import { Mission5_Pseudocode } from "@/components/missions/Mission5_Pseudocode";
 import { Mission6_Debugging } from "@/components/missions/Mission6_Debugging";
 import { GamificationRulesModal } from "@/components/GamificationRulesModal";
 import { CompletionCertificateModal } from "@/components/CompletionCertificateModal";
+import { clearAllStudentStorage } from "@/lib/storage";
 import {
   Trophy,
   ArrowRight,
@@ -124,11 +125,20 @@ function PlayGameContent() {
 
     // 3. Sinkronisasi Data Terbaru dari Server API
     fetch(`/api/student/state?studentId=${currentId}`)
-      .then((res) => {
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404 || data.isReset) {
+          // Data murid telah dihapus / sesi di-reset oleh guru!
+          clearAllStudentStorage(currentId);
+          alert("Sesi belajar telah di-reset oleh guru. Seluruh data penyimpanan lokal telah dibersihkan.");
+          router.replace("/");
+          return null;
+        }
         if (!res.ok) throw new Error("Gagal mengambil data dari server");
-        return res.json();
+        return data;
       })
       .then((data) => {
+        if (!data) return;
         if (data.student) {
           setStudent(data.student);
           setIsOffline(false);
@@ -153,7 +163,8 @@ function PlayGameContent() {
             console.error("Error updating local cache:", e);
           }
         } else {
-          router.push("/");
+          clearAllStudentStorage(currentId);
+          router.replace("/");
         }
       })
       .catch((err) => {
@@ -197,6 +208,47 @@ function PlayGameContent() {
       }
     }
   }, [student?.isFinished, student?.id]);
+
+  // Deteksi jika sesi di-reset oleh guru saat siswa sedang membuka tab ini
+  useEffect(() => {
+    if (!student?.id) return;
+
+    const checkSessionValidity = async () => {
+      try {
+        const res = await fetch(`/api/student/state?studentId=${student.id}`);
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404 || data.isReset) {
+          clearAllStudentStorage(student.id);
+          alert("Sesi belajar telah di-reset oleh guru. Seluruh data penyimpanan lokal telah dibersihkan.");
+          router.replace("/");
+        }
+      } catch (e) {
+        // Abaikan gangguan jaringan murni
+      }
+    };
+
+    const interval = setInterval(checkSessionValidity, 15000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") checkSessionValidity();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [student?.id, router]);
+
+  const handleLogout = () => {
+    if (
+      window.confirm(
+        "Apakah kamu yakin ingin keluar? Seluruh data draf dan cache lokal pada perangkat ini akan dibersihkan."
+      )
+    ) {
+      clearAllStudentStorage(student?.id);
+      router.replace("/");
+    }
+  };
 
   const handleWrongAttempt = async () => {
     if (!student) return;
@@ -439,6 +491,15 @@ function PlayGameContent() {
             >
               <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
               <span className="hidden sm:inline">Aturan Main</span>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
+              title="Keluar dari sesi dan bersihkan data lokal"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Keluar</span>
             </button>
 
             <HeartBar

@@ -24,7 +24,10 @@ export async function GET(req: Request) {
     });
 
     if (!student) {
-      return NextResponse.json({ error: "Data siswa tidak ditemukan" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Data siswa tidak ditemukan atau sesi telah di-reset oleh guru", isReset: true },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ student });

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { GamificationRulesModal } from "@/components/GamificationRulesModal";
+import { clearAllStudentStorage } from "@/lib/storage";
 
 const AVATARS = [
   { id: "avatar-1", icon: "🤖", label: "Cyber Robot" },
@@ -53,11 +54,30 @@ export default function LandingPage() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed?.studentId) {
-          setSavedSession(parsed);
-          setName(parsed.name || "");
-          setAbsentNo(parsed.absentNo?.toString() || "");
-          setSessionCode(parsed.sessionCode || "X5-KANTIN");
-          if (parsed.avatar) setSelectedAvatar(parsed.avatar);
+          // Validasi ke server apakah murid/sesi masih aktif atau telah di-reset oleh guru
+          fetch(`/api/student/state?studentId=${parsed.studentId}`)
+            .then(async (res) => {
+              const data = await res.json().catch(() => ({}));
+              if (res.status === 404 || data.isReset) {
+                // Sesi telah di-reset guru! Bersihkan seluruh storage lokal
+                clearAllStudentStorage(parsed.studentId);
+                setSavedSession(null);
+              } else if (res.ok && data.student) {
+                setSavedSession(parsed);
+                setName(parsed.name || "");
+                setAbsentNo(parsed.absentNo?.toString() || "");
+                setSessionCode(parsed.sessionCode || "X5-KANTIN");
+                if (parsed.avatar) setSelectedAvatar(parsed.avatar);
+              }
+            })
+            .catch(() => {
+              // Jika offline, pertahankan sesi tersimpan lokal
+              setSavedSession(parsed);
+              setName(parsed.name || "");
+              setAbsentNo(parsed.absentNo?.toString() || "");
+              setSessionCode(parsed.sessionCode || "X5-KANTIN");
+              if (parsed.avatar) setSelectedAvatar(parsed.avatar);
+            });
         }
       }
     } catch (e) {
@@ -65,14 +85,27 @@ export default function LandingPage() {
     }
   }, []);
 
-  const handleResumeSavedSession = () => {
+  const handleResumeSavedSession = async () => {
     if (!savedSession?.studentId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/student/state?studentId=${savedSession.studentId}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 404 || data.isReset) {
+        clearAllStudentStorage(savedSession.studentId);
+        setSavedSession(null);
+        setErrorMsg("Sesi belajar sebelumnya telah di-reset oleh guru. Silakan mulai sesi baru.");
+        setLoading(false);
+        return;
+      }
+    } catch (e) {
+      // Offline fallback
+    }
     router.push(`/play?studentId=${savedSession.studentId}`);
   };
 
   const handleClearSavedSession = () => {
-    localStorage.removeItem("algocraft_student_session");
-    localStorage.removeItem("algocraft_student_id");
+    clearAllStudentStorage(savedSession?.studentId);
     setSavedSession(null);
     setName("");
     setAbsentNo("");
@@ -107,6 +140,9 @@ export default function LandingPage() {
         setLoading(false);
         return;
       }
+
+      // Bersihkan seluruh data penyimpanan lokal persisten lama sebelum mulai sesi baru
+      clearAllStudentStorage();
 
       // Simpan session persisten ke localStorage agar tahan restart HP / kendala internet
       const sessionData = {

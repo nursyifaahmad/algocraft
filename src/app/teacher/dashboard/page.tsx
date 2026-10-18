@@ -19,6 +19,7 @@ import {
   RotateCcw,
   AlertTriangle,
 } from "lucide-react";
+import { clearAllStudentStorage } from "@/lib/storage";
 
 export default function TeacherDashboardPage() {
   const router = useRouter();
@@ -121,6 +122,7 @@ export default function TeacherDashboardPage() {
       if (res.ok) {
         setShowResetModal(false);
         setResetSuccessMsg(data.message || `Sesi ${sessionCode} berhasil di-reset.`);
+        clearAllStudentStorage();
         fetchStats();
         setTimeout(() => setResetSuccessMsg(""), 6000);
       } else {
