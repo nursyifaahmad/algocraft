@@ -12,9 +12,31 @@ export async function POST(req: Request) {
       );
     }
 
-    const session = await prisma.session.findUnique({
+    let session = await prisma.session.findUnique({
       where: { code: sessionCode.toUpperCase().trim() },
     });
+
+    // Auto-seed sesi X5-KANTIN jika database baru dibuat
+    if (!session && sessionCode.toUpperCase().trim() === "X5-KANTIN") {
+      const defaultTeacher = await prisma.teacher.upsert({
+        where: { username: "guru" },
+        update: {},
+        create: {
+          username: "guru",
+          password: "guru123",
+          name: "Guru Informatika",
+        },
+      });
+
+      session = await prisma.session.create({
+        data: {
+          code: "X5-KANTIN",
+          title: "PBL Kasir Kantin Pintar",
+          className: "X-5",
+          teacherId: defaultTeacher.id,
+        },
+      });
+    }
 
     if (!session) {
       return NextResponse.json(

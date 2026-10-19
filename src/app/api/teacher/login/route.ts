@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Username dan password wajib diisi" }, { status: 400 });
     }
 
-    const teacher = await prisma.teacher.findUnique({
+    let teacher = await prisma.teacher.findUnique({
       where: { username: username.trim().toLowerCase() },
       include: {
         sessions: {
@@ -18,11 +18,49 @@ export async function POST(req: Request) {
       },
     });
 
+    // Auto-seed akun default guru jika database production masih kosong
+    if (!teacher && username.trim().toLowerCase() === "guru" && password === "guru123") {
+      teacher = await prisma.teacher.create({
+        data: {
+          username: "guru",
+          password: "guru123",
+          name: "Guru Informatika",
+          sessions: {
+            create: {
+              code: "X5-KANTIN",
+              title: "PBL Kasir Kantin Pintar",
+              className: "X-5",
+            },
+          },
+        },
+        include: {
+          sessions: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
+    }
+
     if (!teacher || teacher.password !== password) {
       return NextResponse.json(
         { error: "Username atau kata sandi pengajar salah!" },
         { status: 401 }
       );
+    }
+
+    // Pastikan minimal ada 1 sesi X5-KANTIN jika belum ada sesi
+    if (!teacher.sessions || teacher.sessions.length === 0) {
+      const defaultSession = await prisma.session.upsert({
+        where: { code: "X5-KANTIN" },
+        update: { teacherId: teacher.id },
+        create: {
+          code: "X5-KANTIN",
+          title: "PBL Kasir Kantin Pintar",
+          className: "X-5",
+          teacherId: teacher.id,
+        },
+      });
+      teacher.sessions = [defaultSession];
     }
 
     return NextResponse.json({
