@@ -1,8 +1,14 @@
 node_modules
 .next
 .git
+postgres_data
+postgres_data/**
 dev.db
 dev.db-journal
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .env.local
 .env
+.env*.local
+*.log
