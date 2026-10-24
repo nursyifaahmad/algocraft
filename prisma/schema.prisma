@@ -40,6 +40,8 @@ model Student {
   coins        Int            @default(100)
   xp           Int            @default(0)
   currentLevel Int            @default(1)
+  activeTab    Int            @default(1)
+  lastActiveAt DateTime       @default(now())
   isFinished   Boolean        @default(false)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt

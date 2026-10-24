@@ -64,6 +64,46 @@ export async function GET(req: Request) {
       };
     });
 
+    // Hitung distribusi pengerjaan tahap/misi siswa saat ini
+    const stageDistribution = {
+      tp1: 0,
+      tp2: 0,
+      tp3: 0,
+      tp4: 0,
+      tp5: 0,
+      tp6: 0,
+      finished: 0,
+    };
+
+    const enrichedStudents = students.map((s) => {
+      // Siswa dianggap Online jika lastActiveAt dalam 45 detik terakhir
+      const lastActiveTime = s.lastActiveAt ? new Date(s.lastActiveAt).getTime() : 0;
+      const isOnline = Date.now() - lastActiveTime < 45000;
+      const currentStage = s.isFinished ? 7 : (s.activeTab || s.currentLevel || 1);
+
+      if (s.isFinished) {
+        stageDistribution.finished += 1;
+      } else if (currentStage === 1) {
+        stageDistribution.tp1 += 1;
+      } else if (currentStage === 2) {
+        stageDistribution.tp2 += 1;
+      } else if (currentStage === 3) {
+        stageDistribution.tp3 += 1;
+      } else if (currentStage === 4) {
+        stageDistribution.tp4 += 1;
+      } else if (currentStage === 5) {
+        stageDistribution.tp5 += 1;
+      } else if (currentStage === 6) {
+        stageDistribution.tp6 += 1;
+      }
+
+      return {
+        ...s,
+        isOnline,
+        currentStage,
+      };
+    });
+
     return NextResponse.json({
       session: {
         id: session.id,
@@ -73,8 +113,9 @@ export async function GET(req: Request) {
         isActive: session.isActive,
       },
       totalStudents,
+      stageDistribution,
       tpAnalytics,
-      students,
+      students: enrichedStudents,
     });
   } catch (error: any) {
     console.error("Teacher stats error:", error);

@@ -188,6 +188,12 @@ function PlayGameContent() {
     if (student?.id) {
       try {
         localStorage.setItem(`algocraft_active_tab_${student.id}`, tabNum.toString());
+        // Kirim heartbeat pergantian tab ke server secara instan
+        fetch("/api/student/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId: student.id, activeTab: tabNum }),
+        }).catch(() => {});
       } catch (e) {
         console.error(e);
       }
@@ -209,13 +215,17 @@ function PlayGameContent() {
     }
   }, [student?.isFinished, student?.id]);
 
-  // Deteksi jika sesi di-reset oleh guru saat siswa sedang membuka tab ini
+  // Heartbeat berkala & deteksi jika sesi di-reset oleh guru saat siswa sedang aktif
   useEffect(() => {
     if (!student?.id) return;
 
-    const checkSessionValidity = async () => {
+    const sendHeartbeatAndCheckValidity = async () => {
       try {
-        const res = await fetch(`/api/student/state?studentId=${student.id}`);
+        const res = await fetch("/api/student/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId: student.id, activeTab }),
+        });
         const data = await res.json().catch(() => ({}));
         if (res.status === 404 || data.isReset) {
           clearAllStudentStorage(student.id);
@@ -227,9 +237,12 @@ function PlayGameContent() {
       }
     };
 
-    const interval = setInterval(checkSessionValidity, 15000);
+    // Kirim langsung saat mount atau pergantian tab
+    sendHeartbeatAndCheckValidity();
+
+    const interval = setInterval(sendHeartbeatAndCheckValidity, 10000);
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") checkSessionValidity();
+      if (document.visibilityState === "visible") sendHeartbeatAndCheckValidity();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -237,7 +250,7 @@ function PlayGameContent() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [student?.id, router]);
+  }, [student?.id, activeTab, router]);
 
   const handleLogout = () => {
     if (

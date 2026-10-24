@@ -28,6 +28,9 @@ export default function TeacherDashboardPage() {
   const [sessionCode, setSessionCode] = useState<string>("X5-KANTIN");
   const [statsData, setStatsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isLive, setIsLive] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isBackgroundFetching, setIsBackgroundFetching] = useState(false);
 
   // Modal Buat Sesi Baru
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -50,25 +53,61 @@ export default function TeacherDashboardPage() {
     setTeacher(JSON.parse(stored));
   }, [router]);
 
-  const fetchStats = () => {
+  const fetchStats = async (isBackground = false) => {
     if (!sessionCode) return;
-    setLoading(true);
-    fetch(`/api/teacher/stats?sessionCode=${encodeURIComponent(sessionCode)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.error) {
-          setStatsData(data);
-        }
-      })
-      .catch((err) => console.error("Error stats:", err))
-      .finally(() => setLoading(false));
+    if (isBackground) {
+      setIsBackgroundFetching(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const res = await fetch(`/api/teacher/stats?sessionCode=${encodeURIComponent(sessionCode)}`);
+      const data = await res.json();
+      if (!data.error) {
+        setStatsData(data);
+        setLastUpdated(new Date());
+      }
+    } catch (err) {
+      console.error("Error stats:", err);
+    } finally {
+      if (isBackground) {
+        setIsBackgroundFetching(false);
+      } else {
+        setLoading(false);
+      }
+    }
   };
 
   useEffect(() => {
     if (sessionCode) {
-      fetchStats();
+      fetchStats(false);
     }
   }, [sessionCode]);
+
+  // Live Update: Polling setiap 3.5 detik jika sesi aktif & tab browser sedang terlihat
+  useEffect(() => {
+    if (!sessionCode || !isLive) return;
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchStats(true);
+      }
+    }, 3500);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchStats(true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [sessionCode, isLive]);
 
   const handleLogout = () => {
     localStorage.removeItem("algocraft_teacher");
@@ -141,6 +180,8 @@ export default function TeacherDashboardPage() {
     const headers = [
       "No Absen",
       "Nama Siswa",
+      "Status Online",
+      "Tahap Saat Ini",
       "XP",
       "Koin",
       "TP1_IPO (%)",
@@ -180,10 +221,15 @@ export default function TeacherDashboardPage() {
           : "0";
 
       const isCompletedAll = rubrics.length === 6 && rubrics.every((r) => r >= 3);
+      const stageText = student.isFinished
+        ? "Tuntas (6/6)"
+        : `TP ${student.currentStage || 1}`;
 
       return [
         student.absentNo,
         `"${student.name}"`,
+        student.isOnline ? "Online" : "Offline",
+        stageText,
         student.xp,
         student.coins,
         s1 ? s1.percentage : 0,
@@ -237,6 +283,33 @@ export default function TeacherDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Live Update Toggle Button */}
+            <button
+              onClick={() => setIsLive((prev) => !prev)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                isLive
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 shadow-xs"
+                  : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+              }`}
+              title={
+                isLive
+                  ? "Live Update Aktif (Data diperbarui otomatis setiap 3.5 detik). Klik untuk menjeda."
+                  : "Live Update Dijeda. Klik untuk mengaktifkan kembali."
+              }
+            >
+              <span className="relative flex h-2 w-2">
+                {isLive && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    isLive ? "bg-emerald-500" : "bg-slate-400"
+                  }`}
+                ></span>
+              </span>
+              <span>{isLive ? "Live: Aktif" : "Live: Jeda"}</span>
+            </button>
+
             {/* Session Selector */}
             <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
               <span className="text-xs font-semibold text-slate-500">Sesi:</span>
@@ -266,11 +339,11 @@ export default function TeacherDashboardPage() {
             </button>
 
             <button
-              onClick={fetchStats}
-              title="Perbarui Data"
+              onClick={() => fetchStats(false)}
+              title="Perbarui Data Manual"
               className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 transition-colors cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-4 h-4 ${loading || isBackgroundFetching ? "animate-spin text-indigo-600" : ""}`} />
             </button>
 
             <button
@@ -397,6 +470,105 @@ export default function TeacherDashboardPage() {
           </div>
         </div>
 
+        {/* Ringkasan Distribusi Tahap Siswa Saat Ini (Live Monitoring) */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                {isLive && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                    isLive ? "bg-emerald-500" : "bg-slate-400"
+                  }`}
+                ></span>
+              </span>
+              <h3 className="text-sm font-bold text-slate-800">
+                Distribusi Pengerjaan Misi di Kelas (Live Tracking)
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              {lastUpdated && (
+                <span>
+                  Update: <span className="font-mono font-bold text-indigo-700">{lastUpdated.toLocaleTimeString("id-ID")}</span>
+                </span>
+              )}
+              {isBackgroundFetching && (
+                <RefreshCw className="w-3 h-3 text-indigo-600 animate-spin" />
+              )}
+            </div>
+          </div>
+
+          {/* Cards Distribusi Tiap Tahap */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-1">
+            {[
+              {
+                id: 1,
+                name: "TP 1",
+                title: "IPO",
+                count: statsData?.stageDistribution?.tp1 || 0,
+                color: "border-sky-200 bg-sky-50 text-sky-800",
+              },
+              {
+                id: 2,
+                name: "TP 2",
+                title: "Algo",
+                count: statsData?.stageDistribution?.tp2 || 0,
+                color: "border-indigo-200 bg-indigo-50 text-indigo-800",
+              },
+              {
+                id: 3,
+                name: "TP 3",
+                title: "Cabang",
+                count: statsData?.stageDistribution?.tp3 || 0,
+                color: "border-purple-200 bg-purple-50 text-purple-800",
+              },
+              {
+                id: 4,
+                name: "TP 4",
+                title: "Flowchart",
+                count: statsData?.stageDistribution?.tp4 || 0,
+                color: "border-amber-200 bg-amber-50 text-amber-800",
+              },
+              {
+                id: 5,
+                name: "TP 5",
+                title: "Pseudo",
+                count: statsData?.stageDistribution?.tp5 || 0,
+                color: "border-teal-200 bg-teal-50 text-teal-800",
+              },
+              {
+                id: 6,
+                name: "TP 6",
+                title: "Debug",
+                count: statsData?.stageDistribution?.tp6 || 0,
+                color: "border-rose-200 bg-rose-50 text-rose-800",
+              },
+              {
+                id: 7,
+                name: "Selesai",
+                title: "Tuntas 6/6",
+                count: statsData?.stageDistribution?.finished || 0,
+                color: "border-emerald-200 bg-emerald-50 text-emerald-800",
+              },
+            ].map((stage) => (
+              <div
+                key={stage.id}
+                className={`p-2.5 rounded-2xl border text-center transition-all ${stage.color}`}
+              >
+                <div className="text-[10px] font-semibold opacity-80">
+                  {stage.name} - {stage.title}
+                </div>
+                <div className="text-xl font-black mt-0.5">
+                  {stage.count}{" "}
+                  <span className="text-[11px] font-medium opacity-75">siswa</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Tabel Rekapitulasi Nilai Siswa (Rubrik Skala 4 & Persentase) */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
           <div className="flex items-center justify-between">
@@ -420,6 +592,7 @@ export default function TeacherDashboardPage() {
                 <tr className="bg-slate-50 text-slate-600 border-y border-slate-200 font-bold uppercase tracking-wider text-[10px]">
                   <th className="py-3 px-3">No</th>
                   <th className="py-3 px-3">Nama Siswa</th>
+                  <th className="py-3 px-2 text-center">Tahap Saat Ini</th>
                   <th className="py-3 px-2 text-center">TP 1 (IPO)</th>
                   <th className="py-3 px-2 text-center">TP 2 (Algo)</th>
                   <th className="py-3 px-2 text-center">TP 3 (Cabang)</th>
@@ -433,7 +606,7 @@ export default function TeacherDashboardPage() {
               <tbody className="divide-y divide-slate-100">
                 {statsData?.students?.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-slate-400 italic">
+                    <td colSpan={11} className="py-8 text-center text-slate-400 italic">
                       Belum ada siswa yang bergabung pada sesi ini. Minta siswa memasukkan kode sesi:{" "}
                       <strong>{sessionCode}</strong>
                     </td>
@@ -466,20 +639,56 @@ export default function TeacherDashboardPage() {
                         (s) => s && (s.percentage >= 75 || s.rubricScore >= 3)
                       );
 
+                    const currentStage = student.currentStage || 1;
+
                     return (
                       <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3 px-3 font-mono font-bold text-slate-500">
                           #{student.absentNo}
                         </td>
                         <td className="py-3 px-3 font-bold text-slate-800">
-                          {student.name}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                student.isOnline
+                                  ? "bg-emerald-500 ring-2 ring-emerald-200 shadow-xs"
+                                  : "bg-slate-300"
+                              }`}
+                              title={
+                                student.isOnline
+                                  ? "Online (Aktif dalam 45 detik terakhir)"
+                                  : "Offline"
+                              }
+                            />
+                            <span className="truncate max-w-[150px] sm:max-w-none">
+                              {student.name}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Tahap Saat Ini */}
+                        <td className="py-3 px-2 text-center">
+                          {student.isFinished ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              🏆 Tuntas (6/6)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                              Misi TP {currentStage}
+                            </span>
+                          )}
                         </td>
 
                         {/* TP 1 */}
                         <td className="py-3 px-2 text-center">
                           {s1 ? (
-                            <span className="font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
                               {s1.percentage}% ({s1.rubricScore})
+                            </span>
+                          ) : currentStage === 1 && !student.isFinished ? (
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚡ Aktif
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -489,8 +698,12 @@ export default function TeacherDashboardPage() {
                         {/* TP 2 */}
                         <td className="py-3 px-2 text-center">
                           {s2 ? (
-                            <span className="font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
                               Skor {s2.rubricScore}/4
+                            </span>
+                          ) : currentStage === 2 && !student.isFinished ? (
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚡ Aktif
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -500,8 +713,12 @@ export default function TeacherDashboardPage() {
                         {/* TP 3 */}
                         <td className="py-3 px-2 text-center">
                           {s3 ? (
-                            <span className="font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
                               {s3.percentage}% ({s3.rubricScore})
+                            </span>
+                          ) : currentStage === 3 && !student.isFinished ? (
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚡ Aktif
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -511,8 +728,12 @@ export default function TeacherDashboardPage() {
                         {/* TP 4 */}
                         <td className="py-3 px-2 text-center">
                           {s4 ? (
-                            <span className="font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
                               Skor {s4.rubricScore}/4
+                            </span>
+                          ) : currentStage === 4 && !student.isFinished ? (
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚡ Aktif
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -522,8 +743,12 @@ export default function TeacherDashboardPage() {
                         {/* TP 5 */}
                         <td className="py-3 px-2 text-center">
                           {s5 ? (
-                            <span className="font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
                               Skor {s5.rubricScore}/4
+                            </span>
+                          ) : currentStage === 5 && !student.isFinished ? (
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚡ Aktif
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -533,8 +758,12 @@ export default function TeacherDashboardPage() {
                         {/* TP 6 */}
                         <td className="py-3 px-2 text-center">
                           {s6 ? (
-                            <span className="font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
                               {s6.percentage}% ({s6.rubricScore})
+                            </span>
+                          ) : currentStage === 6 && !student.isFinished ? (
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚡ Aktif
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>
