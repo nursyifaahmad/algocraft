@@ -18,8 +18,10 @@ import {
   HelpCircle,
   RotateCcw,
   AlertTriangle,
+  Trophy,
 } from "lucide-react";
 import { clearAllStudentStorage } from "@/lib/storage";
+import { TeacherLeaderboardView } from "@/components/TeacherLeaderboardView";
 
 export default function TeacherDashboardPage() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function TeacherDashboardPage() {
   const [isLive, setIsLive] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isBackgroundFetching, setIsBackgroundFetching] = useState(false);
+  const [activeTab, setActiveTab] = useState<"matrix" | "leaderboard">("matrix");
 
   // Modal Buat Sesi Baru
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -409,12 +412,51 @@ export default function TeacherDashboardPage() {
           </div>
         </div>
 
-        {/* 6 TP Indicator Analytic Cards */}
-        <div>
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-600" />
-            <span>Ketercapaian 6 Indikator Tujuan Pembelajaran (IKTP)</span>
-          </h3>
+        {/* Tab Switcher: Matriks Asesmen vs Leaderboard Kelas */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 print:hidden">
+          <button
+            onClick={() => setActiveTab("matrix")}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === "matrix"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Matriks Asesmen & Nilai Otentik</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("leaderboard")}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === "leaderboard"
+                ? "bg-amber-500 text-white shadow-md shadow-amber-200"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>Papan Peringkat (Leaderboard Kelas)</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === "leaderboard"
+                  ? "bg-white/20 text-white"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {statsData?.students?.length || 0}
+            </span>
+          </button>
+        </div>
+
+        {/* Konten Tab 1: Matriks Asesmen & Analitik IKTP */}
+        {activeTab === "matrix" && (
+          <div className="space-y-6">
+            {/* 6 TP Indicator Analytic Cards */}
+            <div>
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+                <span>Ketercapaian 6 Indikator Tujuan Pembelajaran (IKTP)</span>
+              </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {statsData?.tpAnalytics?.map((tp: any) => {
@@ -797,7 +839,19 @@ export default function TeacherDashboardPage() {
             </table>
           </div>
         </div>
-      </main>
+      </div>
+    )}
+
+    {/* Konten Tab 2: Papan Peringkat (Leaderboard Kelas) */}
+    {activeTab === "leaderboard" && (
+      <TeacherLeaderboardView
+        students={statsData?.students || []}
+        sessionCode={sessionCode}
+        className={statsData?.session?.className || "X-5"}
+        sessionTitle={statsData?.session?.title}
+      />
+    )}
+  </main>
 
       {/* Modal Buat Sesi Baru */}
       {showCreateModal && (
