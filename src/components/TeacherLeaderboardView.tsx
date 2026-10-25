@@ -47,6 +47,8 @@ interface TeacherLeaderboardViewProps {
   sessionCode: string;
   className?: string;
   sessionTitle?: string;
+  isProjectorMode?: boolean;
+  onProjectorModeChange?: (active: boolean) => void;
 }
 
 type SortCriteria = "xp" | "coins" | "progress";
@@ -56,13 +58,23 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
   sessionCode,
   className = "X-5",
   sessionTitle,
+  isProjectorMode: isProjectorModeProp,
+  onProjectorModeChange,
 }) => {
   const [sortBy, setSortBy] = useState<SortCriteria>("xp");
-  const [isProjectorMode, setIsProjectorMode] = useState(false);
+  const [isProjectorModeLocal, setIsProjectorModeLocal] = useState(false);
+
+  const isProjector =
+    isProjectorModeProp !== undefined ? isProjectorModeProp : isProjectorModeLocal;
+
+  const setProjector = (active: boolean) => {
+    setIsProjectorModeLocal(active);
+    onProjectorModeChange?.(active);
+  };
 
   // Masuk ke mode proyektor layar penuh (Native Fullscreen API)
   const enterFullscreen = async () => {
-    setIsProjectorMode(true);
+    setProjector(true);
     try {
       const elem = document.documentElement;
       if (elem.requestFullscreen) {
@@ -79,7 +91,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
 
   // Keluar dari mode proyektor layar penuh
   const exitFullscreen = async () => {
-    setIsProjectorMode(false);
+    setProjector(false);
     try {
       if (document.fullscreenElement) {
         if (document.exitFullscreen) {
@@ -99,7 +111,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
-        setIsProjectorMode(false);
+        setProjector(false);
       }
     };
 
@@ -115,13 +127,13 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
   // Tangkap tombol Escape sebagai fallback
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isProjectorMode) {
+      if (e.key === "Escape" && isProjector) {
         exitFullscreen();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isProjectorMode]);
+  }, [isProjector]);
 
   // Sorting list siswa berdasarkan kriteria
   const sortedStudents = useMemo(() => {
@@ -165,6 +177,197 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
     () => sortedStudents.reduce((acc, curr) => acc + (curr.badges?.length || 0), 0),
     [sortedStudents]
   );
+
+  // Jika mode proyektor aktif, render secara eksklusif layout layar penuh tanpa navbar atau elemen dashboard lain
+  if (isProjector) {
+    return (
+      <div className="fixed inset-0 z-[99999] min-h-screen w-screen bg-slate-950 text-white flex flex-col p-6 sm:p-10 overflow-y-auto">
+        {/* Header Mode Proyektor */}
+        <div className="flex items-center justify-between pb-4 pt-1 border-b border-slate-800 sticky top-0 bg-slate-950/95 backdrop-blur-md z-20">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/20">
+              🏆
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-white">
+                Papan Peringkat Prestasi Pembelajaran
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400">
+                {sessionTitle || "PBL Algoritma Pemrograman: Kantin Digital Pintar"} • Kelas {className} • Sesi {sessionCode}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Filter Urutan di Header Proyektor */}
+            <div className="hidden md:flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700 text-xs">
+              <button
+                onClick={() => setSortBy("xp")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  sortBy === "xp" ? "bg-amber-500 text-white shadow-xs" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                XP Tertinggi
+              </button>
+              <button
+                onClick={() => setSortBy("coins")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  sortBy === "coins" ? "bg-yellow-500 text-white shadow-xs" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Koin Terbanyak
+              </button>
+              <button
+                onClick={() => setSortBy("progress")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  sortBy === "progress" ? "bg-indigo-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Misi Selesai
+              </button>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>Live Update Aktif</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-[11px] text-slate-400">Tekan ESC untuk keluar</span>
+            </div>
+
+            <button
+              onClick={exitFullscreen}
+              className="px-4 py-2 bg-rose-600/90 hover:bg-rose-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-rose-500 transition-colors cursor-pointer shadow-md shadow-rose-950"
+              title="Keluar dari Layar Penuh (Esc)"
+            >
+              <Minimize2 className="w-4 h-4" />
+              <span>Tutup Layar Penuh (Esc)</span>
+            </button>
+          </div>
+        </div>
+
+        {sortedStudents.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-20 text-slate-500">
+            <Trophy className="w-16 h-16 mx-auto mb-3 opacity-30 text-amber-400" />
+            <p className="text-base font-bold text-slate-300">Belum ada murid yang bergabung pada sesi ini.</p>
+            <p className="text-xs text-slate-500 mt-1">Siswa yang login akan otomatis muncul di papan peringkat ini secara live.</p>
+          </div>
+        ) : (
+          <>
+            {/* Konten Proyektor: Podium Raksasa */}
+            <div className="my-8">
+              <div className="grid grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto items-end pt-8">
+                {/* Juara 2 (Perak) */}
+                <div className="flex flex-col items-center">
+                  {top2 && (
+                    <>
+                      <span className="text-4xl mb-2">🥈</span>
+                      <div className="w-20 h-20 rounded-3xl bg-slate-700 p-1 mb-2 border-2 border-slate-400 shadow-xl">
+                        <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center text-2xl font-black text-slate-200">
+                          {top2.name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <p className="text-base sm:text-lg font-bold text-white text-center truncate max-w-[150px]">
+                        {top2.name}
+                      </p>
+                      <p className="text-xs text-slate-400 font-medium">Absen {top2.absentNo}</p>
+                      <div className="mt-2 text-sm font-black text-slate-200 px-3 py-1 rounded-full bg-slate-800 border border-slate-600">
+                        {top2.xp} XP
+                      </div>
+                      <div className="w-full h-28 sm:h-36 bg-gradient-to-t from-slate-900 to-slate-800 rounded-t-3xl mt-4 flex flex-col items-center justify-center border-t-4 border-slate-400">
+                        <span className="text-3xl font-black text-slate-300">2</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Juara 1 (Emas) */}
+                <div className="flex flex-col items-center -mt-8">
+                  {top1 && (
+                    <>
+                      <span className="text-5xl mb-2 animate-bounce">👑</span>
+                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-amber-400 to-yellow-200 p-1 mb-2 border-4 border-amber-300 shadow-2xl shadow-amber-500/40">
+                        <div className="w-full h-full bg-slate-950 rounded-2xl flex items-center justify-center text-3xl font-black text-amber-300">
+                          {top1.name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <p className="text-lg sm:text-xl font-extrabold text-amber-300 text-center truncate max-w-[180px]">
+                        {top1.name}
+                      </p>
+                      <p className="text-xs text-amber-200 font-medium">Absen {top1.absentNo}</p>
+                      <div className="mt-2 text-base font-black text-amber-300 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400 shadow-md">
+                        {top1.xp} XP
+                      </div>
+                      <div className="w-full h-40 sm:h-48 bg-gradient-to-t from-amber-600 to-yellow-400 rounded-t-3xl mt-4 flex flex-col items-center justify-center text-slate-950 font-black shadow-xl">
+                        <span className="text-4xl">1</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Juara 3 (Perunggu) */}
+                <div className="flex flex-col items-center">
+                  {top3 && (
+                    <>
+                      <span className="text-4xl mb-2">🥉</span>
+                      <div className="w-20 h-20 rounded-3xl bg-amber-900 p-1 mb-2 border-2 border-amber-600 shadow-xl">
+                        <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center text-2xl font-black text-amber-600">
+                          {top3.name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <p className="text-base sm:text-lg font-bold text-white text-center truncate max-w-[150px]">
+                        {top3.name}
+                      </p>
+                      <p className="text-xs text-slate-400 font-medium">Absen {top3.absentNo}</p>
+                      <div className="mt-2 text-sm font-black text-amber-300 px-3 py-1 rounded-full bg-slate-800 border border-amber-800">
+                        {top3.xp} XP
+                      </div>
+                      <div className="w-full h-24 sm:h-30 bg-gradient-to-t from-slate-900 to-amber-950 rounded-t-3xl mt-4 flex flex-col items-center justify-center border-t-4 border-amber-700">
+                        <span className="text-3xl font-black text-amber-500">3</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Daftar Top Siswa Lainnya di Mode Proyektor */}
+            <div className="max-w-4xl mx-auto w-full space-y-2 pb-10">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Peringkat Selanjutnya (Peringkat 4+)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {remainingStudents.map((student, idx) => {
+                  const rank = idx + 4;
+                  return (
+                    <div
+                      key={student.id}
+                      className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-slate-400 w-6">#{rank}</span>
+                        <div>
+                          <div className="text-sm font-bold text-white">{student.name}</div>
+                          <div className="text-[11px] text-slate-400">
+                            Absen {student.absentNo} • 🪙 {student.coins} Koin
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-black text-indigo-400">{student.xp} XP</div>
+                        <div className="text-[10px] text-emerald-400">
+                          {student.isFinished ? "🏆 Tuntas" : `Misi ${student.scores?.length || 0}/6`}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -547,157 +750,6 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
           </table>
         </div>
       </div>
-
-      {/* Mode Proyektor Layar Penuh (Projector Fullscreen Modal) */}
-      {isProjectorMode && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950 text-white flex flex-col p-6 sm:p-10 overflow-y-auto animate-fade-in">
-          {/* Header Mode Proyektor */}
-          <div className="flex items-center justify-between pb-6 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/20">
-                🏆
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-white">
-                  Papan Peringkat Prestasi Pembelajaran
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-400">
-                  {sessionTitle || "PBL Algoritma Pemrograman: Kantin Digital Pintar"} • Kelas {className} • Sesi {sessionCode}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>Live Update Aktif</span>
-                <span className="text-slate-600">•</span>
-                <span className="text-[11px] text-slate-400">Tekan ESC untuk keluar</span>
-              </div>
-
-              <button
-                onClick={exitFullscreen}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-600 transition-colors cursor-pointer"
-                title="Keluar dari Layar Penuh (Esc)"
-              >
-                <Minimize2 className="w-4 h-4" />
-                <span>Tutup Layar Penuh (Esc)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Konten Proyektor: Podium Raksasa */}
-          <div className="my-8">
-            <div className="grid grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto items-end pt-8">
-              {/* Juara 2 (Perak) */}
-              <div className="flex flex-col items-center">
-                {top2 && (
-                  <>
-                    <span className="text-4xl mb-2">🥈</span>
-                    <div className="w-20 h-20 rounded-3xl bg-slate-700 p-1 mb-2 border-2 border-slate-400 shadow-xl">
-                      <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center text-2xl font-black text-slate-200">
-                        {top2.name.charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                    <p className="text-base sm:text-lg font-bold text-white text-center truncate max-w-[150px]">
-                      {top2.name}
-                    </p>
-                    <p className="text-xs text-slate-400 font-medium">Absen {top2.absentNo}</p>
-                    <div className="mt-2 text-sm font-black text-slate-200 px-3 py-1 rounded-full bg-slate-800 border border-slate-600">
-                      {top2.xp} XP
-                    </div>
-                    <div className="w-full h-28 sm:h-36 bg-gradient-to-t from-slate-900 to-slate-800 rounded-t-3xl mt-4 flex flex-col items-center justify-center border-t-4 border-slate-400">
-                      <span className="text-3xl font-black text-slate-300">2</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Juara 1 (Emas) */}
-              <div className="flex flex-col items-center -mt-8">
-                {top1 && (
-                  <>
-                    <span className="text-5xl mb-2 animate-bounce">👑</span>
-                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-amber-400 to-yellow-200 p-1 mb-2 border-4 border-amber-300 shadow-2xl shadow-amber-500/40">
-                      <div className="w-full h-full bg-slate-950 rounded-2xl flex items-center justify-center text-3xl font-black text-amber-300">
-                        {top1.name.charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                    <p className="text-lg sm:text-xl font-extrabold text-amber-300 text-center truncate max-w-[180px]">
-                      {top1.name}
-                    </p>
-                    <p className="text-xs text-amber-200 font-medium">Absen {top1.absentNo}</p>
-                    <div className="mt-2 text-base font-black text-amber-300 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400 shadow-md">
-                      {top1.xp} XP
-                    </div>
-                    <div className="w-full h-40 sm:h-48 bg-gradient-to-t from-amber-600 to-yellow-400 rounded-t-3xl mt-4 flex flex-col items-center justify-center text-slate-950 font-black shadow-xl">
-                      <span className="text-4xl">1</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Juara 3 (Perunggu) */}
-              <div className="flex flex-col items-center">
-                {top3 && (
-                  <>
-                    <span className="text-4xl mb-2">🥉</span>
-                    <div className="w-20 h-20 rounded-3xl bg-amber-900 p-1 mb-2 border-2 border-amber-600 shadow-xl">
-                      <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center text-2xl font-black text-amber-600">
-                        {top3.name.charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                    <p className="text-base sm:text-lg font-bold text-white text-center truncate max-w-[150px]">
-                      {top3.name}
-                    </p>
-                    <p className="text-xs text-slate-400 font-medium">Absen {top3.absentNo}</p>
-                    <div className="mt-2 text-sm font-black text-amber-300 px-3 py-1 rounded-full bg-slate-800 border border-amber-800">
-                      {top3.xp} XP
-                    </div>
-                    <div className="w-full h-24 sm:h-30 bg-gradient-to-t from-slate-900 to-amber-950 rounded-t-3xl mt-4 flex flex-col items-center justify-center border-t-4 border-amber-700">
-                      <span className="text-3xl font-black text-amber-500">3</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Daftar Top Siswa Lainnya di Mode Proyektor */}
-          <div className="max-w-4xl mx-auto w-full space-y-2 pb-10">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Peringkat Selanjutnya (Peringkat 4+)
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {remainingStudents.map((student, idx) => {
-                const rank = idx + 4;
-                return (
-                  <div
-                    key={student.id}
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-slate-400 w-6">#{rank}</span>
-                      <div>
-                        <div className="text-sm font-bold text-white">{student.name}</div>
-                        <div className="text-[11px] text-slate-400">
-                          Absen {student.absentNo} • 🪙 {student.coins} Koin
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-black text-indigo-400">{student.xp} XP</div>
-                      <div className="text-[10px] text-emerald-400">
-                        {student.isFinished ? "🏆 Tuntas" : `Misi ${student.scores?.length || 0}/6`}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
