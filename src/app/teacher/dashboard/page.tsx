@@ -324,9 +324,72 @@ export default function TeacherDashboardPage() {
       className={`min-h-screen font-sans ${
         isProjectorMode
           ? "bg-slate-950 text-white p-0 m-0 overflow-x-hidden"
-          : "bg-slate-100 text-slate-800 pb-16"
+          : "bg-slate-100 text-slate-800 pb-16 print:pb-0 print:bg-white"
       }`}
     >
+      {/* Stylesheet Cetak PDF & Print Resmi */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @media print {
+          @page {
+            size: landscape;
+            margin: 8mm 10mm;
+          }
+
+          *,
+          *::before,
+          *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          html, body {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            overflow: visible !important;
+            height: auto !important;
+            min-height: auto !important;
+          }
+
+          main {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+
+          .break-inside-avoid,
+          .print-avoid-break,
+          tr,
+          td,
+          th {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          thead {
+            display: table-header-group !important;
+          }
+
+          tbody {
+            display: table-row-group !important;
+          }
+
+          .shadow-xs,
+          .shadow-sm,
+          .shadow-md,
+          .shadow-lg,
+          .shadow-xl {
+            box-shadow: none !important;
+          }
+
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+        }
+      `}} />
+
       {/* Top Header - Sembunyikan sepenuhnya saat Mode Proyektor Layar Penuh aktif */}
       {!isProjectorMode && (
         <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs print:hidden">
@@ -435,7 +498,7 @@ export default function TeacherDashboardPage() {
         className={
           isProjectorMode
             ? "w-full min-h-screen p-0 m-0"
-            : "max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6"
+            : "max-w-7xl mx-auto px-4 sm:px-6 pt-6 print:pt-2 print:px-0 space-y-6 print:space-y-3"
         }
       >
         {/* Banner Sukses Reset Sesi */}
@@ -472,17 +535,17 @@ export default function TeacherDashboardPage() {
 
         {/* Banner Info Sesi */}
         {!isProjectorMode && (
-          <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-6 rounded-3xl shadow-md flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-6 print:p-4 rounded-3xl print:rounded-2xl shadow-md print:shadow-none flex flex-wrap items-center justify-between gap-4 break-inside-avoid print:break-inside-avoid">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-indigo-300 text-xs font-semibold mb-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 print:py-0.5 rounded-full bg-white/10 text-indigo-300 text-xs print:text-[10px] font-semibold mb-2 print:mb-1">
                 <span>Sesi Kelas: {statsData?.session?.code || sessionCode}</span>
                 <span>•</span>
                 <span>Kelas {statsData?.session?.className || "X-5"}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black">
+              <h2 className="text-xl sm:text-2xl print:text-lg font-black">
                 {statsData?.session?.title || "PBL Algoritma Pemrograman: Kantin Digital Pintar"}
               </h2>
-              <p className="text-xs text-slate-300 mt-1">
+              <p className="text-xs print:text-[10px] text-slate-300 mt-1">
                 Rekapitulasi Capaian 6 Indikator Tujuan Pembelajaran Problem Based Learning
               </p>
             </div>
@@ -546,202 +609,202 @@ export default function TeacherDashboardPage() {
 
         {/* Konten Tab 1: Matriks Asesmen & Analitik IKTP */}
         {!isProjectorMode && activeTab === "matrix" && (
-          <div className="space-y-6">
+          <div className="space-y-6 print:space-y-3">
             {/* 6 TP Indicator Analytic Cards */}
-            <div>
-              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <div className="break-inside-avoid print:break-inside-avoid">
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 print:mb-1.5 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-indigo-600" />
                 <span>Ketercapaian 6 Indikator Tujuan Pembelajaran (IKTP)</span>
               </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {statsData?.tpAnalytics?.map((tp: any) => {
-              const isPassing = tp.passRate >= 75;
-              return (
-                <div
-                  key={tp.code}
-                  className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-3"
-                >
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-mono font-bold text-indigo-700 px-2 py-0.5 bg-indigo-50 rounded-md">
-                        {tp.code}
-                      </span>
-                      <span
-                        className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
-                          isPassing
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {tp.passRate}% Tuntas
-                      </span>
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-800">{tp.title}</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">{tp.targetKriteria}</p>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-3 gap-4 print:gap-2">
+                {statsData?.tpAnalytics?.map((tp: any) => {
+                  const isPassing = tp.passRate >= 75;
+                  return (
+                    <div
+                      key={tp.code}
+                      className="bg-white p-5 print:p-2.5 rounded-2xl print:rounded-xl border border-slate-200 shadow-xs print:shadow-none flex flex-col justify-between space-y-3 print:space-y-1.5 break-inside-avoid print:break-inside-avoid"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-mono font-bold text-indigo-700 px-2 py-0.5 bg-indigo-50 rounded-md">
+                            {tp.code}
+                          </span>
+                          <span
+                            className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                              isPassing
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {tp.passRate}% Tuntas
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-800">{tp.title}</h4>
+                        <p className="text-[11px] print:text-[10px] text-slate-500 mt-1">{tp.targetKriteria}</p>
+                      </div>
 
-                  {/* Progress bar */}
-                  <div className="space-y-1 pt-2 border-t border-slate-100 text-xs">
-                    <div className="flex items-center justify-between text-[11px] text-slate-600">
-                      <span>Siswa Tuntas:</span>
-                      <span className="font-bold">
-                        {tp.passedCount} dari {statsData.totalStudents} siswa
-                      </span>
+                      {/* Progress bar */}
+                      <div className="space-y-1 pt-2 print:pt-1 border-t border-slate-100 text-xs">
+                        <div className="flex items-center justify-between text-[11px] print:text-[10px] text-slate-600">
+                          <span>Siswa Tuntas:</span>
+                          <span className="font-bold">
+                            {tp.passedCount} dari {statsData.totalStudents} siswa
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${tp.passRate}%` }}
+                            className={`h-full rounded-full ${
+                              isPassing ? "bg-emerald-500" : "bg-amber-500"
+                            }`}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] print:text-[9px] text-slate-400 pt-0.5">
+                          <span>Rerata Persen: {tp.avgPercentage}%</span>
+                          <span>Rerata Rubrik: {tp.avgRubric}/4</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div
-                        style={{ width: `${tp.passRate}%` }}
-                        className={`h-full rounded-full ${
-                          isPassing ? "bg-emerald-500" : "bg-amber-500"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                      <span>Rerata Persen: {tp.avgPercentage}%</span>
-                      <span>Rerata Rubrik: {tp.avgRubric}/4</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Ringkasan Distribusi Tahap Siswa Saat Ini (Live Monitoring) */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                {isLive && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                )}
-                <span
-                  className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                    isLive ? "bg-emerald-500" : "bg-slate-400"
-                  }`}
-                ></span>
-              </span>
-              <h3 className="text-sm font-bold text-slate-800">
-                Distribusi Pengerjaan Misi di Kelas (Live Tracking)
-              </h3>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              {lastUpdated && (
-                <span>
-                  Update: <span className="font-mono font-bold text-indigo-700">{lastUpdated.toLocaleTimeString("id-ID")}</span>
-                </span>
-              )}
-              {isBackgroundFetching && (
-                <RefreshCw className="w-3 h-3 text-indigo-600 animate-spin" />
-              )}
-            </div>
-          </div>
 
-          {/* Cards Distribusi Tiap Tahap */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-1">
-            {[
-              {
-                id: 1,
-                name: "TP 1",
-                title: "IPO",
-                count: statsData?.stageDistribution?.tp1 || 0,
-                color: "border-sky-200 bg-sky-50 text-sky-800",
-              },
-              {
-                id: 2,
-                name: "TP 2",
-                title: "Algo",
-                count: statsData?.stageDistribution?.tp2 || 0,
-                color: "border-indigo-200 bg-indigo-50 text-indigo-800",
-              },
-              {
-                id: 3,
-                name: "TP 3",
-                title: "Cabang",
-                count: statsData?.stageDistribution?.tp3 || 0,
-                color: "border-purple-200 bg-purple-50 text-purple-800",
-              },
-              {
-                id: 4,
-                name: "TP 4",
-                title: "Flowchart",
-                count: statsData?.stageDistribution?.tp4 || 0,
-                color: "border-amber-200 bg-amber-50 text-amber-800",
-              },
-              {
-                id: 5,
-                name: "TP 5",
-                title: "Pseudo",
-                count: statsData?.stageDistribution?.tp5 || 0,
-                color: "border-teal-200 bg-teal-50 text-teal-800",
-              },
-              {
-                id: 6,
-                name: "TP 6",
-                title: "Debug",
-                count: statsData?.stageDistribution?.tp6 || 0,
-                color: "border-rose-200 bg-rose-50 text-rose-800",
-              },
-              {
-                id: 7,
-                name: "Selesai",
-                title: "Tuntas 6/6",
-                count: statsData?.stageDistribution?.finished || 0,
-                color: "border-emerald-200 bg-emerald-50 text-emerald-800",
-              },
-            ].map((stage) => (
-              <div
-                key={stage.id}
-                className={`p-2.5 rounded-2xl border text-center transition-all ${stage.color}`}
-              >
-                <div className="text-[10px] font-semibold opacity-80">
-                  {stage.name} - {stage.title}
+            {/* Ringkasan Distribusi Tahap Siswa Saat Ini (Live Monitoring) */}
+            <div className="bg-white rounded-3xl print:rounded-2xl border border-slate-200 shadow-xs print:shadow-none p-5 sm:p-6 print:p-3 space-y-3 print:space-y-1.5 break-inside-avoid print:break-inside-avoid">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-2.5 w-2.5 print:hidden">
+                    {isLive && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span
+                      className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                        isLive ? "bg-emerald-500" : "bg-slate-400"
+                      }`}
+                    ></span>
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Distribusi Pengerjaan Misi di Kelas (Live Tracking)
+                  </h3>
                 </div>
-                <div className="text-xl font-black mt-0.5">
-                  {stage.count}{" "}
-                  <span className="text-[11px] font-medium opacity-75">siswa</span>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  {lastUpdated && (
+                    <span>
+                      Update: <span className="font-mono font-bold text-indigo-700">{lastUpdated.toLocaleTimeString("id-ID")}</span>
+                    </span>
+                  )}
+                  {isBackgroundFetching && (
+                    <RefreshCw className="w-3 h-3 text-indigo-600 animate-spin print:hidden" />
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+
+              {/* Cards Distribusi Tiap Tahap */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 print:grid-cols-7 gap-2.5 print:gap-1.5 pt-1">
+                {[
+                  {
+                    id: 1,
+                    name: "TP 1",
+                    title: "IPO",
+                    count: statsData?.stageDistribution?.tp1 || 0,
+                    color: "border-sky-200 bg-sky-50 text-sky-800",
+                  },
+                  {
+                    id: 2,
+                    name: "TP 2",
+                    title: "Algo",
+                    count: statsData?.stageDistribution?.tp2 || 0,
+                    color: "border-indigo-200 bg-indigo-50 text-indigo-800",
+                  },
+                  {
+                    id: 3,
+                    name: "TP 3",
+                    title: "Cabang",
+                    count: statsData?.stageDistribution?.tp3 || 0,
+                    color: "border-purple-200 bg-purple-50 text-purple-800",
+                  },
+                  {
+                    id: 4,
+                    name: "TP 4",
+                    title: "Flowchart",
+                    count: statsData?.stageDistribution?.tp4 || 0,
+                    color: "border-amber-200 bg-amber-50 text-amber-800",
+                  },
+                  {
+                    id: 5,
+                    name: "TP 5",
+                    title: "Pseudo",
+                    count: statsData?.stageDistribution?.tp5 || 0,
+                    color: "border-teal-200 bg-teal-50 text-teal-800",
+                  },
+                  {
+                    id: 6,
+                    name: "TP 6",
+                    title: "Debug",
+                    count: statsData?.stageDistribution?.tp6 || 0,
+                    color: "border-rose-200 bg-rose-50 text-rose-800",
+                  },
+                  {
+                    id: 7,
+                    name: "Selesai",
+                    title: "Tuntas 6/6",
+                    count: statsData?.stageDistribution?.finished || 0,
+                    color: "border-emerald-200 bg-emerald-50 text-emerald-800",
+                  },
+                ].map((stage) => (
+                  <div
+                    key={stage.id}
+                    className={`p-2.5 print:p-1.5 rounded-2xl print:rounded-xl border text-center transition-all ${stage.color} break-inside-avoid print:break-inside-avoid`}
+                  >
+                    <div className="text-[10px] print:text-[8px] font-semibold opacity-80">
+                      {stage.name} - {stage.title}
+                    </div>
+                    <div className="text-xl print:text-base font-black mt-0.5">
+                      {stage.count}{" "}
+                      <span className="text-[11px] print:text-[8px] font-medium opacity-75">siswa</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
         {/* Tabel Rekapitulasi Nilai Siswa (Rubrik Skala 4 & Persentase) */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
+        <div className="bg-white rounded-3xl print:rounded-2xl border border-slate-200 shadow-sm print:shadow-none overflow-hidden space-y-4 print:space-y-2 p-5 sm:p-6 print:p-3.5 print:mt-3 break-inside-avoid print:break-inside-auto">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <Users className="w-4 h-4 text-indigo-600" />
                 <span>Matriks Penilaian Otentik Siswa (Kelas X-5)</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs print:text-[10px] text-slate-500 mt-0.5">
                 Nilai terkonversi otomatis ke Skala 4 dan Persentase sesuai rubrik asesmen.
               </p>
             </div>
-            <div className="text-xs font-semibold text-slate-500">
+            <div className="text-xs print:text-[10px] font-semibold text-slate-500">
               Total Siswa Terdaftar: {statsData?.totalStudents || 0}
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-600 border-y border-slate-200 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-3">No</th>
-                  <th className="py-3 px-3">Nama Siswa</th>
-                  <th className="py-3 px-2 text-center">Tahap Saat Ini</th>
-                  <th className="py-3 px-2 text-center">TP 1 (IPO)</th>
-                  <th className="py-3 px-2 text-center">TP 2 (Algo)</th>
-                  <th className="py-3 px-2 text-center">TP 3 (Cabang)</th>
-                  <th className="py-3 px-2 text-center">TP 4 (Flowchart)</th>
-                  <th className="py-3 px-2 text-center">TP 5 (Pseudo)</th>
-                  <th className="py-3 px-2 text-center">TP 6 (Debug)</th>
-                  <th className="py-3 px-3 text-center">Rerata Rubrik</th>
-                  <th className="py-3 px-3 text-center">Status</th>
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full text-left text-xs print:text-[10px] border-collapse">
+              <thead className="print:table-header-group">
+                <tr className="bg-slate-50 text-slate-600 border-y border-slate-200 font-bold uppercase tracking-wider text-[10px] print:text-[9px]">
+                  <th className="py-3 print:py-1.5 px-3 print:px-1.5">No</th>
+                  <th className="py-3 print:py-1.5 px-3 print:px-1.5">Nama Siswa</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">Tahap Saat Ini</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">TP 1 (IPO)</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">TP 2 (Algo)</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">TP 3 (Cabang)</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">TP 4 (Flowchart)</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">TP 5 (Pseudo)</th>
+                  <th className="py-3 print:py-1.5 px-2 print:px-1 text-center">TP 6 (Debug)</th>
+                  <th className="py-3 print:py-1.5 px-3 print:px-1.5 text-center">Rerata Rubrik</th>
+                  <th className="py-3 print:py-1.5 px-3 print:px-1.5 text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 print:table-row-group">
                 {statsData?.students?.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="py-8 text-center text-slate-400 italic">
@@ -780,14 +843,17 @@ export default function TeacherDashboardPage() {
                     const currentStage = student.currentStage || 1;
 
                     return (
-                      <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-slate-500">
+                      <tr
+                        key={student.id}
+                        className="hover:bg-slate-50/70 transition-colors break-inside-avoid print:break-inside-avoid"
+                      >
+                        <td className="py-3 print:py-1.5 px-3 print:px-1.5 font-mono font-bold text-slate-500">
                           #{student.absentNo}
                         </td>
-                        <td className="py-3 px-3 font-bold text-slate-800">
+                        <td className="py-3 print:py-1.5 px-3 print:px-1.5 font-bold text-slate-800">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                              className={`w-2.5 h-2.5 rounded-full shrink-0 print:hidden ${
                                 student.isOnline
                                   ? "bg-emerald-500 ring-2 ring-emerald-200 shadow-xs"
                                   : "bg-slate-300"
@@ -798,34 +864,34 @@ export default function TeacherDashboardPage() {
                                   : "Offline"
                               }
                             />
-                            <span className="truncate max-w-[150px] sm:max-w-none">
+                            <span className="truncate max-w-[150px] sm:max-w-none print:max-w-none print:text-[10px]">
                               {student.name}
                             </span>
                           </div>
                         </td>
 
                         {/* Tahap Saat Ini */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {student.isFinished ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <span className="inline-flex items-center gap-1 px-2.5 print:px-1.5 py-0.5 rounded-full text-[10px] print:text-[8px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                               🏆 Tuntas (6/6)
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                            <span className="inline-flex items-center gap-1 px-2.5 print:px-1.5 py-0.5 rounded-full text-[10px] print:text-[8px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse print:hidden"></span>
                               Misi TP {currentStage}
                             </span>
                           )}
                         </td>
 
                         {/* TP 1 */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {s1 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 print:px-1 py-0.5 rounded-md font-semibold text-slate-700 print:text-[9px]">
                               {s1.percentage}% ({s1.rubricScore})
                             </span>
                           ) : currentStage === 1 && !student.isFinished ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.5 rounded-md text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                               ⚡ Aktif
                             </span>
                           ) : (
@@ -834,13 +900,13 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         {/* TP 2 */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {s2 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 print:px-1 py-0.5 rounded-md font-semibold text-slate-700 print:text-[9px]">
                               Skor {s2.rubricScore}/4
                             </span>
                           ) : currentStage === 2 && !student.isFinished ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.5 rounded-md text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                               ⚡ Aktif
                             </span>
                           ) : (
@@ -849,13 +915,13 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         {/* TP 3 */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {s3 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 print:px-1 py-0.5 rounded-md font-semibold text-slate-700 print:text-[9px]">
                               {s3.percentage}% ({s3.rubricScore})
                             </span>
                           ) : currentStage === 3 && !student.isFinished ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.5 rounded-md text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                               ⚡ Aktif
                             </span>
                           ) : (
@@ -864,13 +930,13 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         {/* TP 4 */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {s4 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 print:px-1 py-0.5 rounded-md font-semibold text-slate-700 print:text-[9px]">
                               Skor {s4.rubricScore}/4
                             </span>
                           ) : currentStage === 4 && !student.isFinished ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.5 rounded-md text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                               ⚡ Aktif
                             </span>
                           ) : (
@@ -879,13 +945,13 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         {/* TP 5 */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {s5 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 print:px-1 py-0.5 rounded-md font-semibold text-slate-700 print:text-[9px]">
                               Skor {s5.rubricScore}/4
                             </span>
                           ) : currentStage === 5 && !student.isFinished ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.5 rounded-md text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                               ⚡ Aktif
                             </span>
                           ) : (
@@ -894,13 +960,13 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         {/* TP 6 */}
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 print:py-1.5 px-2 print:px-1 text-center">
                           {s6 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md font-semibold text-slate-700">
+                            <span className="inline-block px-1.5 print:px-1 py-0.5 rounded-md font-semibold text-slate-700 print:text-[9px]">
                               {s6.percentage}% ({s6.rubricScore})
                             </span>
                           ) : currentStage === 6 && !student.isFinished ? (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.5 rounded-md text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                               ⚡ Aktif
                             </span>
                           ) : (
@@ -909,31 +975,31 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         {/* Rerata Rubrik */}
-                        <td className="py-3 px-3 text-center font-bold text-indigo-700">
+                        <td className="py-3 print:py-1.5 px-3 print:px-1.5 text-center font-bold text-indigo-700 print:text-[9px]">
                           {avgRubric}
                         </td>
 
                         {/* Status & Catatan Tebus Nyawa */}
-                        <td className="py-3 px-3 text-center">
-                          <div className="flex flex-col items-center gap-1">
+                        <td className="py-3 print:py-1.5 px-3 print:px-1.5 text-center">
+                          <div className="flex flex-col items-center gap-1 print:gap-0.5">
                             {isAllPassed ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                <CheckCircle2 className="w-3 h-3" /> Tuntas
+                              <span className="inline-flex items-center gap-1 px-2.5 print:px-1.5 py-0.5 rounded-full text-[10px] print:text-[8px] font-bold bg-emerald-100 text-emerald-800">
+                                <CheckCircle2 className="w-3 h-3 print:w-2.5 print:h-2.5" /> Tuntas
                               </span>
                             ) : rubrics.length > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                              <span className="inline-flex items-center gap-1 px-2.5 print:px-1.5 py-0.5 rounded-full text-[10px] print:text-[8px] font-bold bg-amber-100 text-amber-800">
                                 Proses
                               </span>
                             ) : (
-                              <span className="text-slate-300 text-[11px]">Belum Mulai</span>
+                              <span className="text-slate-300 text-[11px] print:text-[9px]">Belum Mulai</span>
                             )}
 
                             {student.heartRedeems > 0 && (
                               <span
-                                className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                                className="inline-flex items-center gap-0.5 px-2 print:px-1 py-0.2 rounded-md text-[9px] print:text-[7px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
                                 title={`Siswa melakukan ${student.heartRedeems} kali tebus/pemulihan nyawa`}
                               >
-                                💔 {student.heartRedeems}x Tebus
+                                💔 {student.heartRedeems}x
                               </span>
                             )}
                           </div>

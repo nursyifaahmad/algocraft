@@ -439,7 +439,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
 
       {/* Podium 3 Besar (Top 3 Pedestal) */}
       {sortedStudents.length > 0 && (
-        <div className="bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-900/50 relative overflow-hidden">
+        <div className="bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-900/50 relative overflow-hidden break-inside-avoid print:break-inside-avoid">
           {/* Latar Belakang Estetik */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
@@ -649,7 +649,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                   return (
                     <tr
                       key={student.id}
-                      className={`hover:bg-slate-50/70 transition-colors ${
+                      className={`hover:bg-slate-50/70 transition-colors break-inside-avoid print:break-inside-avoid ${
                         rank <= 3 ? "bg-amber-50/20" : ""
                       }`}
                     >
