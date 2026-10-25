@@ -140,10 +140,7 @@ export const Mission1_IPO: React.FC<Mission1Props> = ({ studentId, onSuccess, on
           atau <strong>Output</strong> (informasi hasil).
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
-          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold">
-            Target Ketuntasan: Minimal 75% Benar
-          </span>
-          <span>• Ketuk kartu, lalu ketuk wadah tujuan untuk menempatkannya.</span>
+          <span>💡 <strong>Petunjuk:</strong> Ketuk kartu, lalu ketuk wadah tujuan untuk menempatkannya.</span>
         </div>
       </div>
 

@@ -558,10 +558,7 @@ export const Mission4_Flowchart: React.FC<Mission4Props> = ({ studentId, onSucce
           bentuk simbol yang tepat, tempatkan di kanvas, dan hubungkan garis alurnya dengan panah siku tegak lurus.
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
-          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md font-bold">
-            Target Ketuntasan: Minimal Skor 3 dari Skala 4
-          </span>
-          <span>• Hubungkan garis dari simbol asal ke simbol tujuan. Garis akan otomatis lurus tegak siku!</span>
+          <span>💡 <strong>Petunjuk:</strong> Hubungkan garis dari simbol asal ke simbol tujuan. Garis akan otomatis lurus tegak siku!</span>
         </div>
       </div>
 

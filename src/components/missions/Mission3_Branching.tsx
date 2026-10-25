@@ -132,10 +132,7 @@ export const Mission3_Branching: React.FC<Mission3Props> = ({ studentId, onSucce
           diberikan, dan bagaimana memvalidasi apakah saldo kartu siswa cukup untuk membayar.
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
-          <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md font-bold">
-            Target Ketuntasan: Minimal 75% Benar
-          </span>
-          <span>• Analisis skenario dan pilih struktur percabangan yang tepat.</span>
+          <span>💡 <strong>Petunjuk:</strong> Analisis skenario dan pilih struktur percabangan yang tepat.</span>
         </div>
       </div>
 

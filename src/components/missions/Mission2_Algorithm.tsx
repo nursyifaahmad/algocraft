@@ -221,10 +221,7 @@ export const Mission2_Algorithm: React.FC<Mission2Props> = ({ studentId, onSucce
           Susunlah 7 langkah algoritma di bawah ini agar urutan transaksinya logis dan sistematis.
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-2">
-          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-bold">
-            Target Ketuntasan: Minimal Skor 3 dari Skala 4
-          </span>
-          <span>• 💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop (geser langsung)</strong> kartu atau gunakan tombol panah Naik / Turun.</span>
+          <span>💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop (geser langsung)</strong> kartu atau gunakan tombol panah Naik / Turun.</span>
         </div>
       </div>
 

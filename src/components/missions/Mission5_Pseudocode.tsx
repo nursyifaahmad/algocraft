@@ -303,10 +303,7 @@ export const Mission5_Pseudocode: React.FC<Mission5Props> = ({ studentId, onSucc
           <strong> indentasi (ruang masuk)</strong> pada percabangan `JIKA-SELAIN ITU`.
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-2">
-          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold">
-            Target Ketuntasan: Minimal Skor 3 dari Skala 4
-          </span>
-          <span>• 💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop baris</strong> atau gunakan tombol panah & Tab.</span>
+          <span>💡 <strong>Tips:</strong> Anda bisa <strong>Drag & Drop baris</strong> atau gunakan tombol panah & Tab.</span>
         </div>
       </div>
 

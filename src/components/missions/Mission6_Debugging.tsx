@@ -178,10 +178,7 @@ export const Mission6_Debugging: React.FC<Mission6Props> = ({ studentId, onSucce
           dan tentukan perbaikan yang paling akurat!
         </p>
         <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-2">
-          <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-md font-bold">
-            Target Ketuntasan: Minimal 75% Ketepatan
-          </span>
-          <span>• Ketuk baris kode yang salah, lalu pilih perbaikan di bawahnya.</span>
+          <span>💡 <strong>Petunjuk:</strong> Ketuk baris kode yang salah, lalu pilih perbaikan di bawahnya.</span>
         </div>
       </div>
 
