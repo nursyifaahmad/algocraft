@@ -19,6 +19,7 @@ import {
   RotateCcw,
   AlertTriangle,
   Trophy,
+  Database,
 } from "lucide-react";
 import { clearAllStudentStorage } from "@/lib/storage";
 import { TeacherLeaderboardView } from "@/components/TeacherLeaderboardView";
@@ -47,6 +48,11 @@ export default function TeacherDashboardPage() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetSuccessMsg, setResetSuccessMsg] = useState("");
+
+  // Modal Muat Data Responden Dummy
+  const [showSeedModal, setShowSeedModal] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [seedSuccessMsg, setSeedSuccessMsg] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("algocraft_teacher");
@@ -192,6 +198,33 @@ export default function TeacherDashboardPage() {
       alert("Error: " + err.message);
     } finally {
       setResetting(false);
+    }
+  };
+
+  const handleSeedDummy = async () => {
+    if (!sessionCode) return;
+    setSeeding(true);
+    setSeedSuccessMsg("");
+
+    try {
+      const res = await fetch("/api/teacher/seed-dummy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionCode }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShowSeedModal(false);
+        setSeedSuccessMsg(`Berhasil memuat ${data.totalStudents} data responden siswa ke sesi ${sessionCode}!`);
+        await fetchStats(false);
+        setTimeout(() => setSeedSuccessMsg(""), 6000);
+      } else {
+        alert(data.error || "Gagal memuat data responden.");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -360,6 +393,15 @@ export default function TeacherDashboardPage() {
               </button>
 
               <button
+                onClick={() => setShowSeedModal(true)}
+                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
+                title="Muat 46 data responden siswa autentik untuk simulasi/uji coba"
+              >
+                <Database className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Muat Data Responden (46)</span>
+              </button>
+
+              <button
                 onClick={() => setShowResetModal(true)}
                 className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer"
                 title="Reset Seluruh Data Murid & Nilai pada Sesi Ini"
@@ -405,6 +447,22 @@ export default function TeacherDashboardPage() {
             </div>
             <button
               onClick={() => setResetSuccessMsg("")}
+              className="text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Banner Sukses Muat Data Responden */}
+        {!isProjectorMode && seedSuccessMsg && (
+          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-3 rounded-2xl text-xs flex items-center justify-between shadow-xs animate-fade-in print:hidden">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">{seedSuccessMsg}</span>
+            </div>
+            <button
+              onClick={() => setSeedSuccessMsg("")}
               className="text-emerald-700 hover:text-emerald-900 font-bold ml-2 cursor-pointer"
             >
               ✕
@@ -1019,6 +1077,68 @@ export default function TeacherDashboardPage() {
                   <>
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Ya, Reset Sesi Ini</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Muat Data Responden Dummy */}
+      {showSeedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-emerald-100 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+              <Database className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-black text-slate-900">
+                Muat 46 Data Responden Siswa
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Tindakan ini akan memasukkan data <strong>46 siswa riil</strong> beserta hasil penilaian 6 indikator PBL (IPO, Algoritma, Percabangan, Flowchart, Pseudocode, Debugging) ke sesi:
+              </p>
+              <div className="inline-block font-mono font-bold text-xs text-indigo-700 bg-indigo-50 px-3 py-1 rounded-xl border border-indigo-200">
+                {sessionCode}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Data mencakup siswa yang tuntas dengan skor sempurna, siswa dalam proses, maupun yang belum mulai.
+              </p>
+            </div>
+
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 space-y-0.5">
+              <span className="font-bold">✨ Simulasi Pembelajaran:</span>
+              <p className="text-emerald-800">
+                Siswa dapat langsung login via portal murid (/play) menggunakan nomor absen 1 s.d. 46.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={seeding}
+                onClick={() => setShowSeedModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={seeding}
+                onClick={handleSeedDummy}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-200 flex items-center gap-1.5 cursor-pointer"
+              >
+                {seeding ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Memuat 46 Siswa...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Ya, Muat Data Sekarang</span>
                   </>
                 )}
               </button>
