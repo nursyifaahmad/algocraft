@@ -211,7 +211,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                   <p className="text-xs sm:text-sm font-bold text-white text-center truncate max-w-[90px] sm:max-w-[140px]">
                     {top2.name}
                   </p>
-                  <p className="text-[11px] text-slate-400 font-mono">#{top2.absentNo}</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Absen {top2.absentNo}</p>
 
                   <div className="mt-2 text-center">
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800/80 border border-slate-600 text-slate-200 text-xs font-black">
@@ -256,7 +256,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                   <p className="text-sm sm:text-base font-extrabold text-amber-300 text-center truncate max-w-[110px] sm:max-w-[170px]">
                     {top1.name}
                   </p>
-                  <p className="text-xs text-amber-200/80 font-mono">#{top1.absentNo}</p>
+                  <p className="text-xs text-amber-200/80 font-medium">Absen {top1.absentNo}</p>
 
                   <div className="mt-2 text-center">
                     <div className="inline-block px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 text-sm font-black shadow-xs">
@@ -301,7 +301,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                   <p className="text-xs sm:text-sm font-bold text-white text-center truncate max-w-[90px] sm:max-w-[140px]">
                     {top3.name}
                   </p>
-                  <p className="text-[11px] text-slate-400 font-mono">#{top3.absentNo}</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Absen {top3.absentNo}</p>
 
                   <div className="mt-2 text-center">
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800/80 border border-amber-800/80 text-amber-300 text-xs font-black">
@@ -416,8 +416,8 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                             }`}
                             title={student.isOnline ? "Online (Aktif)" : "Offline"}
                           />
-                          <span className="text-[11px] font-mono px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-normal">
-                            #{student.absentNo}
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 rounded text-slate-500">
+                            Absen {student.absentNo}
                           </span>
                           <span className="truncate max-w-[160px] sm:max-w-none">
                             {student.name}
@@ -535,7 +535,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                     <p className="text-base sm:text-lg font-bold text-white text-center truncate max-w-[150px]">
                       {top2.name}
                     </p>
-                    <p className="text-xs text-slate-400 font-mono">#{top2.absentNo}</p>
+                    <p className="text-xs text-slate-400 font-medium">Absen {top2.absentNo}</p>
                     <div className="mt-2 text-sm font-black text-slate-200 px-3 py-1 rounded-full bg-slate-800 border border-slate-600">
                       {top2.xp} XP
                     </div>
@@ -559,7 +559,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                     <p className="text-lg sm:text-xl font-extrabold text-amber-300 text-center truncate max-w-[180px]">
                       {top1.name}
                     </p>
-                    <p className="text-xs text-amber-200 font-mono">#{top1.absentNo}</p>
+                    <p className="text-xs text-amber-200 font-medium">Absen {top1.absentNo}</p>
                     <div className="mt-2 text-base font-black text-amber-300 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400 shadow-md">
                       {top1.xp} XP
                     </div>
@@ -583,7 +583,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                     <p className="text-base sm:text-lg font-bold text-white text-center truncate max-w-[150px]">
                       {top3.name}
                     </p>
-                    <p className="text-xs text-slate-400 font-mono">#{top3.absentNo}</p>
+                    <p className="text-xs text-slate-400 font-medium">Absen {top3.absentNo}</p>
                     <div className="mt-2 text-sm font-black text-amber-300 px-3 py-1 rounded-full bg-slate-800 border border-amber-800">
                       {top3.xp} XP
                     </div>
@@ -614,7 +614,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
                       <div>
                         <div className="text-sm font-bold text-white">{student.name}</div>
                         <div className="text-[11px] text-slate-400">
-                          Absen #{student.absentNo} • 🪙 {student.coins} Koin
+                          Absen {student.absentNo} • 🪙 {student.coins} Koin
                         </div>
                       </div>
                     </div>

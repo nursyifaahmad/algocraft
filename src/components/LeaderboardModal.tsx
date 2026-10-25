@@ -109,7 +109,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-semibold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md">
-                        #{student.absentNo}
+                        Absen {student.absentNo}
                       </span>
                       <p className="text-sm font-bold text-slate-800 truncate">
                         {student.name} {isMe && <span className="text-xs text-amber-600">(Kamu)</span>}
