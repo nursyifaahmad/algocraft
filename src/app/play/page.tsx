@@ -15,6 +15,7 @@ import { Mission5_Pseudocode } from "@/components/missions/Mission5_Pseudocode";
 import { Mission6_Debugging } from "@/components/missions/Mission6_Debugging";
 import { GamificationRulesModal } from "@/components/GamificationRulesModal";
 import { CompletionCertificateModal } from "@/components/CompletionCertificateModal";
+import { HeartExhaustedModal } from "@/components/HeartExhaustedModal";
 import { clearAllStudentStorage } from "@/lib/storage";
 import {
   Trophy,
@@ -49,6 +50,8 @@ function PlayGameContent() {
   const [showRules, setShowRules] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [completionDefaultTab, setCompletionDefaultTab] = useState<"rapor" | "certificate">("rapor");
+  const [showHeartExhaustedModal, setShowHeartExhaustedModal] = useState(false);
+  const [isHeartRedeeming, setIsHeartRedeeming] = useState(false);
 
   // Waktu pengerjaan misi (detik)
   const [timeSpent, setTimeSpent] = useState<number>(0);
@@ -278,14 +281,87 @@ function PlayGameContent() {
       try {
         localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
       } catch (e) {}
+
+      if (updatedHearts === 0) {
+        setShowHeartExhaustedModal(true);
+      }
     } catch (e) {
       console.warn("Offline error during heart decrease:", e);
       // Fallback offline lokal
-      const updatedStudent = { ...student, hearts: Math.max(0, (student.hearts || 3) - 1) };
+      const updatedHearts = Math.max(0, (student.hearts || 3) - 1);
+      const updatedStudent = { ...student, hearts: updatedHearts };
       setStudent(updatedStudent);
       try {
         localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
       } catch (err) {}
+
+      if (updatedHearts === 0) {
+        setShowHeartExhaustedModal(true);
+      }
+    }
+  };
+
+  const handleRedeemWithCoins = async () => {
+    if (!student) return;
+    setIsHeartRedeeming(true);
+    try {
+      const res = await fetch("/api/student/heart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: student.id, action: "redeem_coins" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedStudent = {
+          ...student,
+          hearts: data.hearts, // Tepat 1 nyawa
+          coins: data.coins,
+          heartRedeems: data.heartRedeems,
+        };
+        setStudent(updatedStudent);
+        try {
+          localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+        } catch (e) {}
+        setShowHeartExhaustedModal(false);
+      } else {
+        alert(data.error || "Gagal menebus nyawa.");
+      }
+    } catch (e: any) {
+      alert("Terjadi kesalahan jaringan: " + e.message);
+    } finally {
+      setIsHeartRedeeming(false);
+    }
+  };
+
+  const handleCooldownFinish = async () => {
+    if (!student) return;
+    setIsHeartRedeeming(true);
+    try {
+      const res = await fetch("/api/student/heart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: student.id, action: "cooldown_refill" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedStudent = {
+          ...student,
+          hearts: data.hearts, // 3 nyawa penuh
+          coins: data.coins,
+          heartRedeems: data.heartRedeems,
+        };
+        setStudent(updatedStudent);
+        try {
+          localStorage.setItem(`algocraft_student_cache_${student.id}`, JSON.stringify(updatedStudent));
+        } catch (e) {}
+        setShowHeartExhaustedModal(false);
+      } else {
+        alert(data.error || "Gagal memulihkan nyawa.");
+      }
+    } catch (e: any) {
+      alert("Terjadi kesalahan jaringan: " + e.message);
+    } finally {
+      setIsHeartRedeeming(false);
     }
   };
 
@@ -738,6 +814,14 @@ function PlayGameContent() {
         onConfirm={() => setShowRules(false)}
         studentName={student.name}
         isFirstTime={false}
+      />
+      <HeartExhaustedModal
+        isOpen={showHeartExhaustedModal}
+        coins={student?.coins || 0}
+        activeTab={activeTab}
+        onRedeemWithCoins={handleRedeemWithCoins}
+        onCooldownFinish={handleCooldownFinish}
+        isRedeeming={isHeartRedeeming}
       />
     </div>
   );

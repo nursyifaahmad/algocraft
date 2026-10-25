@@ -200,6 +200,7 @@ export default function TeacherDashboardPage() {
       "TP6_DEBUG (%)",
       "TP6_Rubrik",
       "Rata-rata Rubrik",
+      "Jumlah Tebus Nyawa",
       "Status Ketuntasan",
     ];
 
@@ -248,6 +249,7 @@ export default function TeacherDashboardPage() {
         s6 ? s6.percentage : 0,
         s6 ? s6.rubricScore : 0,
         avgRubric,
+        student.heartRedeems || 0,
         isCompletedAll ? "TUNTAS" : "BELUM TUNTAS",
       ].join(",");
     });
@@ -817,19 +819,30 @@ export default function TeacherDashboardPage() {
                           {avgRubric}
                         </td>
 
-                        {/* Status */}
+                        {/* Status & Catatan Tebus Nyawa */}
                         <td className="py-3 px-3 text-center">
-                          {isAllPassed ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                              <CheckCircle2 className="w-3 h-3" /> Tuntas
-                            </span>
-                          ) : rubrics.length > 0 ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                              Proses
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 text-[11px]">Belum Mulai</span>
-                          )}
+                          <div className="flex flex-col items-center gap-1">
+                            {isAllPassed ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                <CheckCircle2 className="w-3 h-3" /> Tuntas
+                              </span>
+                            ) : rubrics.length > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                Proses
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 text-[11px]">Belum Mulai</span>
+                            )}
+
+                            {student.heartRedeems > 0 && (
+                              <span
+                                className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                                title={`Siswa melakukan ${student.heartRedeems} kali tebus/pemulihan nyawa`}
+                              >
+                                💔 {student.heartRedeems}x Tebus
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

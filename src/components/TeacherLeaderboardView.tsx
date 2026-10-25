@@ -29,6 +29,7 @@ export interface StudentLeaderboardItem {
   lastActiveAt?: string | Date;
   isOnline?: boolean;
   currentStage?: number;
+  heartRedeems?: number;
   scores?: Array<{
     missionType: string;
     percentage: number;
