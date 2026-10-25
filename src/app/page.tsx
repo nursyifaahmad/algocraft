@@ -6,7 +6,6 @@ import {
   Target,
   Gamepad2,
   ArrowRight,
-  CheckCircle,
   AlertCircle,
   Play,
   RotateCcw,
@@ -219,25 +218,6 @@ export default function LandingPage() {
             <strong> percabangan IF-ELSE</strong>, buat diagram alir kanvas bebas, rangkai <strong>pseudocode</strong>,
             dan buru bug sistem dengan tabel uji.
           </p>
-
-          <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 pt-1">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>Penyimpanan Aman Otomatis</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>Sistem Nyawa, Koin & XP</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>7 Lencana Prestasi Belajar</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>Rubrik Asesmen PPG Otomatis</span>
-            </div>
-          </div>
         </div>
 
         {/* Kolom Kanan: Sesi Tersimpan & Form Masuk Cepat */}
