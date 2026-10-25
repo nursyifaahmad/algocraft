@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Trophy,
   Medal,
@@ -58,6 +58,69 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
 }) => {
   const [sortBy, setSortBy] = useState<SortCriteria>("xp");
   const [isProjectorMode, setIsProjectorMode] = useState(false);
+
+  // Masuk ke mode proyektor layar penuh (Native Fullscreen API)
+  const enterFullscreen = async () => {
+    setIsProjectorMode(true);
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if ((elem as any).webkitRequestFullscreen) {
+        await (elem as any).webkitRequestFullscreen();
+      } else if ((elem as any).msRequestFullscreen) {
+        await (elem as any).msRequestFullscreen();
+      }
+    } catch (err) {
+      console.warn("Fullscreen request error:", err);
+    }
+  };
+
+  // Keluar dari mode proyektor layar penuh
+  const exitFullscreen = async () => {
+    setIsProjectorMode(false);
+    try {
+      if (document.fullscreenElement) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn("Fullscreen exit error:", err);
+    }
+  };
+
+  // Sinkronisasi state ketika user menekan ESC bawaan browser untuk keluar fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsProjectorMode(false);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  // Tangkap tombol Escape sebagai fallback
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isProjectorMode) {
+        exitFullscreen();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isProjectorMode]);
 
   // Sorting list siswa berdasarkan kriteria
   const sortedStudents = useMemo(() => {
@@ -160,12 +223,12 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
           </div>
 
           <button
-            onClick={() => setIsProjectorMode(true)}
+            onClick={enterFullscreen}
             className="px-3.5 py-2 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white text-xs font-bold rounded-2xl flex items-center gap-1.5 shadow-md shadow-slate-900/20 transition-all cursor-pointer"
-            title="Buka tampilan layar penuh untuk proyektor kelas"
+            title="Buka tampilan layar penuh (Fullscreen) untuk proyektor kelas"
           >
             <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
-            <span>Mode Proyektor</span>
+            <span>Mode Proyektor (Layar Penuh)</span>
           </button>
         </div>
       </div>
@@ -486,7 +549,7 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
 
       {/* Mode Proyektor Layar Penuh (Projector Fullscreen Modal) */}
       {isProjectorMode && (
-        <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col p-6 sm:p-10 overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-[9999] bg-slate-950 text-white flex flex-col p-6 sm:p-10 overflow-y-auto animate-fade-in">
           {/* Header Mode Proyektor */}
           <div className="flex items-center justify-between pb-6 border-b border-slate-800">
             <div className="flex items-center gap-3">
@@ -507,14 +570,17 @@ export const TeacherLeaderboardView: React.FC<TeacherLeaderboardViewProps> = ({
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                 <span>Live Update Aktif</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-[11px] text-slate-400">Tekan ESC untuk keluar</span>
               </div>
 
               <button
-                onClick={() => setIsProjectorMode(false)}
+                onClick={exitFullscreen}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-600 transition-colors cursor-pointer"
+                title="Keluar dari Layar Penuh (Esc)"
               >
                 <Minimize2 className="w-4 h-4" />
-                <span>Tutup Proyektor</span>
+                <span>Tutup Layar Penuh (Esc)</span>
               </button>
             </div>
           </div>
